@@ -8,7 +8,7 @@ import SupervisorReview from './components/SupervisorReview';
 import ManagerReview from './components/ManagerReview';
 import PresidentReview from './components/PresidentReview';
 import PhpSourceCodeGuide from './components/PhpSourceCodeGuide';
-import { LayoutDashboard, Award, Settings, CheckSquare, Shield, HelpCircle, Landmark } from 'lucide-react';
+import { LayoutDashboard, Award, Settings, CheckSquare, Shield, HelpCircle, Landmark, Sun, Moon } from 'lucide-react';
 
 export default function App() {
   // Initialize States from localStorage if exists, else defaults
@@ -25,6 +25,17 @@ export default function App() {
   const [submissions, setSubmissions] = useState<FormSubmission[]>(() => {
     const saved = localStorage.getItem('wf_submissions');
     return saved ? JSON.parse(saved) : INITIAL_SUBMISSIONS;
+  });
+
+  // Dynamic departments state
+  const [departments, setDepartments] = useState<string[]>(() => {
+    const saved = localStorage.getItem('wf_departments');
+    return saved ? JSON.parse(saved) : ['فنی و مهندسی', 'امور قراردادها', 'کنترل اسناد (Dcc)'];
+  });
+
+  // Dark mode status state
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    return localStorage.getItem('wf_dark_mode') === 'true';
   });
 
   // Simulation current logged in user
@@ -49,6 +60,20 @@ export default function App() {
     localStorage.setItem('wf_submissions', JSON.stringify(submissions));
   }, [submissions]);
 
+  useEffect(() => {
+    localStorage.setItem('wf_departments', JSON.stringify(departments));
+  }, [departments]);
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('wf_dark_mode', 'true');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('wf_dark_mode', 'false');
+    }
+  }, [darkMode]);
+
   // Actions handlers
   const handleAddUser = (newUser: User) => {
     setUsers(prev => [...prev, newUser]);
@@ -60,6 +85,16 @@ export default function App() {
 
   const handleDeleteTemplate = (id: string) => {
     setTemplates(prev => prev.filter(t => t.id !== id));
+  };
+
+  const handleAddDepartment = (name: string) => {
+    if (!departments.includes(name)) {
+      setDepartments(prev => [...prev, name]);
+    }
+  };
+
+  const handleDeleteDepartment = (name: string) => {
+    setDepartments(prev => prev.filter(d => d !== name));
   };
 
   const handleCreateSubmission = (newSub: FormSubmission) => {
@@ -153,9 +188,11 @@ export default function App() {
       localStorage.removeItem('wf_users');
       localStorage.removeItem('wf_templates');
       localStorage.removeItem('wf_submissions');
+      localStorage.removeItem('wf_departments');
       setUsers(INITIAL_USERS);
       setTemplates(INITIAL_TEMPLATES);
       setSubmissions(INITIAL_SUBMISSIONS);
+      setDepartments(['فنی و مهندسی', 'امور قراردادها', 'کنترل اسناد (Dcc)']);
       setCurrentUser(INITIAL_USERS.find(u => u.role === 'staff') || INITIAL_USERS[0]);
       alert('کل اطلاعات با موفقیت ریست شد.');
     }
@@ -168,7 +205,7 @@ export default function App() {
   const countApproved = submissions.filter(s => s.status === 'approved_by_president').length;
 
   return (
-    <div id="app-root" className="min-h-screen bg-slate-100 text-slate-900 pb-12 font-sans" dir="rtl">
+    <div id="app-root" className={`min-h-screen pb-12 font-sans transition-colors duration-250 ${darkMode ? 'bg-slate-950 text-slate-100 dark' : 'bg-slate-100 text-slate-900'}`} dir="rtl">
       
       {/* Top Main Navigation Header */}
       <header className="bg-slate-900 border-b border-slate-800 text-white sticky top-0 z-50 shadow-sm print:hidden">
@@ -186,32 +223,43 @@ export default function App() {
             </div>
           </div>
 
-          {/* Quick Tab control */}
-          <div className="flex items-center gap-2 bg-slate-800 p-1.5 rounded-xl border border-slate-700">
-            <button
-              id="workflow-simulator-tab"
-              onClick={() => setActiveNavbarTab('workflow')}
-              className={`flex items-center gap-1.5 py-1.5 px-3.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
-                activeNavbarTab === 'workflow'
-                  ? 'bg-slate-700 text-white shadow-xs'
-                  : 'text-slate-300 hover:text-white'
-              }`}
-            >
-              <LayoutDashboard className="w-4 h-4" />
-              <span> شبیه‌ساز گردش فرم‌ها</span>
-            </button>
+          {/* Quick Tab control and Dark Mode toggle */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-slate-800 p-1.5 rounded-xl border border-slate-700">
+              <button
+                id="workflow-simulator-tab"
+                onClick={() => setActiveNavbarTab('workflow')}
+                className={`flex items-center gap-1.5 py-1.5 px-3.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                  activeNavbarTab === 'workflow'
+                    ? 'bg-slate-700 text-white shadow-xs'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <LayoutDashboard className="w-4 h-4" />
+                <span> شبیه‌ساز گردش فرم‌ها</span>
+              </button>
 
+              <button
+                id="php-codeinstall-tab"
+                onClick={() => setActiveNavbarTab('php-code')}
+                className={`flex items-center gap-1.5 py-1.5 px-3.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                  activeNavbarTab === 'php-code'
+                    ? 'bg-slate-700 text-white shadow-xs'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <Landmark className="w-4 h-4" />
+                <span>کدهای کامل PHP دیتابیس</span>
+              </button>
+            </div>
+
+            {/* Aesthetic Dark Mode Toggle */}
             <button
-              id="php-codeinstall-tab"
-              onClick={() => setActiveNavbarTab('php-code')}
-              className={`flex items-center gap-1.5 py-1.5 px-3.5 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
-                activeNavbarTab === 'php-code'
-                  ? 'bg-slate-700 text-white shadow-xs'
-                  : 'text-slate-300 hover:text-white'
-              }`}
+              onClick={() => setDarkMode(prev => !prev)}
+              className="p-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 hover:text-white rounded-xl cursor-pointer transition-all shadow-md flex items-center justify-center"
+              title={darkMode ? 'تغییر به تم روز' : 'تغییر به تم شب'}
             >
-              <Landmark className="w-4 h-4" />
-              <span>کدهای کامل PHP دیتابیس</span>
+              {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-300" />}
             </button>
           </div>
         </div>
@@ -305,6 +353,9 @@ export default function App() {
                     onAddUser={handleAddUser}
                     onAddTemplate={handleAddTemplate}
                     onDeleteTemplate={handleDeleteTemplate}
+                    departments={departments}
+                    onAddDepartment={handleAddDepartment}
+                    onDeleteDepartment={handleDeleteDepartment}
                   />
                 )}
 

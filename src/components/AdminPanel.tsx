@@ -8,25 +8,53 @@ interface AdminPanelProps {
   onAddUser: (user: User) => void;
   onAddTemplate: (template: FormTemplate) => void;
   onDeleteTemplate: (id: string) => void;
+  departments: string[];
+  onAddDepartment: (name: string) => void;
+  onDeleteDepartment: (name: string) => void;
 }
 
-export default function AdminPanel({ users, templates, onAddUser, onAddTemplate, onDeleteTemplate }: AdminPanelProps) {
+export default function AdminPanel({
+  users,
+  templates,
+  onAddUser,
+  onAddTemplate,
+  onDeleteTemplate,
+  departments,
+  onAddDepartment,
+  onDeleteDepartment
+}: AdminPanelProps) {
   // Tabs
-  const [activeTab, setActiveTab] = useState<'templates' | 'users' | 'excel-guide'>('templates');
+  const [activeTab, setActiveTab] = useState<'templates' | 'users' | 'departments' | 'excel-guide'>('templates');
   
   // New User Form State
   const [newUserName, setNewUserName] = useState('');
   const [newUserCode, setNewUserCode] = useState('');
   const [newUserRole, setNewUserRole] = useState<'staff' | 'supervisor' | 'manager'>('staff');
-  const [newUserUnit, setNewUserUnit] = useState('واحد فنی و مهندسی');
+  const [newUserUnit, setNewUserUnit] = useState(departments[0] || '');
   const [newUserPassword, setNewUserPassword] = useState('123456');
 
   // New Template Form State
   const [newTemplateTitle, setNewTemplateTitle] = useState('');
-  const [newTemplateUnit, setNewTemplateUnit] = useState('واحد فنی و مهندسی');
+  const [newTemplateUnit, setNewTemplateUnit] = useState(departments[0] || '');
   const [newFields, setNewFields] = useState<FormField[]>([
     { id: 'field_1', label: 'شرح اصلی عیب یا پروژه', type: 'text', required: true }
   ]);
+
+  // New Department State
+  const [newDepartmentName, setNewDepartmentName] = useState('');
+
+  const handleCreateDepartment = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newDepartmentName.trim();
+    if (!trimmed) return;
+    if (departments.includes(trimmed)) {
+      alert('این دپارتمان قبلاً ثبت شده است!');
+      return;
+    }
+    onAddDepartment(trimmed);
+    setNewDepartmentName('');
+    alert(`دپارتمان "${trimmed}" با موفقیت ثبت شد.`);
+  };
   
   // MOCK EXCEL UPLOAD STATE
   const [excelFile, setExcelFile] = useState<File | null>(null);
@@ -170,13 +198,13 @@ export default function AdminPanel({ users, templates, onAddUser, onAddTemplate,
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200 bg-slate-50/50">
+      <div className="flex border-b border-slate-200 bg-slate-50/50 dark:bg-slate-800">
         <button
           onClick={() => setActiveTab('templates')}
           className={`flex items-center gap-2 px-5 py-3 text-xs font-semibold cursor-pointer border-b-2 transition-all ${
             activeTab === 'templates'
-              ? 'border-rose-500 text-rose-600 bg-white'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
+              ? 'border-rose-500 text-rose-600 bg-white dark:bg-slate-900'
+              : 'border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
           <FileSpreadsheet className="w-4 h-4" />
@@ -186,19 +214,30 @@ export default function AdminPanel({ users, templates, onAddUser, onAddTemplate,
           onClick={() => setActiveTab('users')}
           className={`flex items-center gap-2 px-5 py-3 text-xs font-semibold cursor-pointer border-b-2 transition-all ${
             activeTab === 'users'
-              ? 'border-rose-500 text-rose-600 bg-white'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
+              ? 'border-rose-500 text-rose-600 bg-white dark:bg-slate-900'
+              : 'border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
           <Users className="w-4 h-4" />
           <span>تعریف کاربران و ویرایش رمزها</span>
         </button>
         <button
+          onClick={() => setActiveTab('departments')}
+          className={`flex items-center gap-2 px-5 py-3 text-xs font-semibold cursor-pointer border-b-2 transition-all ${
+            activeTab === 'departments'
+              ? 'border-rose-500 text-rose-600 bg-white dark:bg-slate-900'
+              : 'border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          <ListFilter className="w-4 h-4" />
+          <span>مدیریت دپارتمان‌ها ({departments.length})</span>
+        </button>
+        <button
           onClick={() => setActiveTab('excel-guide')}
           className={`flex items-center gap-2 px-5 py-3 text-xs font-semibold cursor-pointer border-b-2 transition-all ${
             activeTab === 'excel-guide'
-              ? 'border-rose-500 text-rose-600 bg-white'
-              : 'border-transparent text-slate-600 hover:text-slate-900'
+              ? 'border-rose-500 text-rose-600 bg-white dark:bg-slate-900'
+              : 'border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
           }`}
         >
           <HelpCircle className="w-4 h-4" />
@@ -288,14 +327,13 @@ export default function AdminPanel({ users, templates, onAddUser, onAddTemplate,
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-600 mb-1">متعلق به واحد سازمانی</label>
                     <select
-                      value={newTemplateUnit}
+                      value={newTemplateUnit || (departments[0] || '')}
                       onChange={(e) => setNewTemplateUnit(e.target.value)}
-                      className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-rose-500"
+                      className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs focus:outline-none focus:border-rose-500"
                     >
-                      <option value="واحد فنی و مهندسی">واحد فنی و مهندسی</option>
-                      <option value="واحد حسابداری و مالی">واحد حسابداری و مالی</option>
-                      <option value="واحد منابع انسانی">واحد منابع انسانی</option>
-                      <option value="واحد فروش و بازاریابی">واحد فروش و بازاریابی</option>
+                      {departments.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -482,14 +520,13 @@ export default function AdminPanel({ users, templates, onAddUser, onAddTemplate,
               <div>
                 <label className="block text-[11px] font-semibold text-slate-600 mb-1">انتخاب واحد یا دپارتمان</label>
                 <select
-                  value={newUserUnit}
+                  value={newUserUnit || (departments[0] || '')}
                   onChange={(e) => setNewUserUnit(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-rose-500"
+                  className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2 text-xs focus:outline-none focus:border-rose-500 text-slate-900 dark:text-slate-100"
                 >
-                  <option value="واحد فنی و مهندسی">واحد فنی و مهندسی</option>
-                  <option value="واحد حسابداری و مالی">واحد حسابداری و مالی</option>
-                  <option value="واحد منابع انسانی">واحد منابع انسانی</option>
-                  <option value="واحد فروش و بازاریابی">واحد فروش و بازاریابی</option>
+                  {departments.map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
                 </select>
               </div>
 
@@ -623,6 +660,108 @@ export default function AdminPanel({ users, templates, onAddUser, onAddTemplate,
               <div>
                 <span className="font-bold block mb-1">توضیح فنی توسعه‌دهنده برای این دمو:</span>
                 وقتی شما در این بخش فایلی با پسوند اکسل مانند <code className="font-mono bg-white px-1 py-0.5 rounded">اضافه کار.xlsx</code> یا <code className="font-mono bg-white px-1 py-0.5 rounded">انبارداری.xlsx</code> آپلود می‌کنید، سیستم به طور خودکار ستون‌های تعبیه شده اکسل را مدل‌سازی و پارس می‌کند و بلافاصله فرم آنلاین آن بخش را تولید خواهد کرد تا کارشناسان بتوانند آن را مستقیماً تکمیل کنند!
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'departments' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Add New Department Form */}
+              <div className="lg:col-span-5 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-5 border border-slate-200 dark:border-slate-800">
+                <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-1.5 font-sans">
+                  <span className="p-1 bg-rose-105 dark:bg-rose-950 rounded text-rose-700 dark:text-rose-300">
+                    <Plus className="w-4 h-4" />
+                  </span>
+                  افزودن دپارتمان جدید سازمانی
+                </h3>
+                <form onSubmit={handleCreateDepartment} className="space-y-4">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                      نام دقیق دپارتمان / واحد اداری
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="مثال: امور قراردادها، فنی و مهندسی"
+                      value={newDepartmentName}
+                      onChange={(e) => setNewDepartmentName(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 text-xs focus:outline-none focus:border-rose-500 text-slate-900 dark:text-slate-100 font-sans"
+                      required
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg p-2.5 text-xs transition-colors cursor-pointer"
+                  >
+                    ثبت دپارتمان تازه در سامانه
+                  </button>
+                </form>
+              </div>
+
+              {/* Registered Departments List */}
+              <div className="lg:col-span-7 space-y-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xs font-bold text-slate-800 dark:text-slate-150">
+                    دپارتمان‌های ثبت شده در شبکه مرکزی ({departments.length})
+                  </h3>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                    دپارتمان‌های پیش‌فرض قابل حذف نیستند.
+                  </span>
+                </div>
+
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
+                  <table className="w-full text-xs text-right text-slate-600 dark:text-slate-300">
+                    <thead className="bg-slate-50 dark:bg-slate-850 text-[10px] text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                      <tr>
+                        <th className="p-3">نام دپارتمان / واحد</th>
+                        <th className="p-3">کاربران فعال</th>
+                        <th className="p-3">قالب فرم</th>
+                        <th className="p-3 text-left">عملیات حذف</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                      {departments.map(dept => {
+                        const userCount = users.filter(u => u.unit === dept).length;
+                        const templateCount = templates.filter(t => t.unit === dept).length;
+                        const isProtected = ['فنی و مهندسی', 'امور قراردادها', 'کنترل اسناد (Dcc)'].includes(dept);
+
+                        return (
+                          <tr key={dept} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/20">
+                            <td className="p-3 font-semibold text-slate-800 dark:text-slate-200">
+                              {dept}
+                            </td>
+                            <td className="p-3 font-mono text-slate-600 dark:text-slate-400">{userCount} کاربر</td>
+                            <td className="p-3 font-mono text-slate-500 dark:text-slate-400">{templateCount} قالب</td>
+                            <td className="p-3 text-left">
+                              {isProtected ? (
+                                <span className="text-[9px] bg-slate-105 dark:bg-slate-800/90 text-slate-400 px-2 py-0.5 rounded">
+                                  سیستمی و حفاظت شده
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (userCount > 0 || templateCount > 0) {
+                                      if (!confirm(`هشدار: دپارتمان "${dept}" دارای ${userCount} کاربر و ${templateCount} قالب است. آیا تمایل به حذف کامل آن دارید؟`)) {
+                                        return;
+                                      }
+                                    }
+                                    onDeleteDepartment(dept);
+                                    alert(`دپارتمان "${dept}" با موفقیت حذف شد.`);
+                                  }}
+                                  className="text-[10px] text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-900/10 px-2 py-0.5 rounded cursor-pointer"
+                                >
+                                  حذف دپارتمان
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>

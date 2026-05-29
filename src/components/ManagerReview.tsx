@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { User, FormSubmission, FormTemplate } from '../types';
-import { Newspaper, MessageSquare, Award, ArrowLeftRight, CheckCircle, HelpCircle, FileCheck, ThumbsDown } from 'lucide-react';
+import { Newspaper, MessageSquare, Award, ArrowLeftRight, CheckCircle, HelpCircle, FileCheck, ThumbsDown, BarChart3, TrendingUp, RefreshCw, ChevronDown, ChevronUp, Clock, List } from 'lucide-react';
 
 interface ManagerReviewProps {
   currentUser: User;
@@ -19,11 +19,38 @@ export default function ManagerReview({
 }: ManagerReviewProps) {
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
   const [managerComment, setManagerComment] = useState('');
+  const [isStatsCollapsed, setIsStatsCollapsed] = useState(false);
+  const [statsViewTab, setStatsViewTab] = useState<'chart' | 'recent'>('chart');
 
   // Filter submissions waiting for department manager review
   const pendingSubmissions = submissions.filter(
     s => s.status === 'sent_to_manager' && (s.unit === currentUser.unit || currentUser.unit === 'عمومی')
   );
+
+  // Filter submissions of current department/unit
+  const deptSubmissions = submissions.filter(
+    s => s.unit === currentUser.unit || currentUser.unit === 'عمومی'
+  );
+
+  const approvedCount = deptSubmissions.filter(
+    s => s.status === 'sent_to_president' || s.status === 'approved_by_president'
+  ).length;
+
+  const returnedCount = deptSubmissions.filter(
+    s => s.status === 'sent_to_supervisor'
+  ).length;
+
+  const totalBoth = approvedCount + returnedCount;
+  const approvedPercent = totalBoth > 0 ? (approvedCount / totalBoth) * 100 : 0;
+  const returnedPercent = totalBoth > 0 ? (returnedCount / totalBoth) * 100 : 0;
+
+  // Filter recently processed submissions for this unit/department
+  const recentlyProcessed = deptSubmissions.filter(
+    s => s.status === 'sent_to_president' || 
+         s.status === 'approved_by_president' || 
+         s.managerApprovedAt !== null ||
+         (s.status === 'sent_to_supervisor' && s.supervisorComment?.includes('مدیر دپارتمان'))
+  ).reverse();
 
   const selectedSub = submissions.find(s => s.id === selectedSubId);
   const selectedTemplate = selectedSub ? templates.find(t => t.id === selectedSub.templateId) : null;
@@ -56,7 +83,122 @@ export default function ManagerReview({
     <div id="manager-review-root" className="grid grid-cols-1 lg:grid-cols-12 gap-6" dir="rtl">
       {/* Sidebar: Submissions under review */}
       <div className="lg:col-span-5 space-y-4">
-        <h3 className="text-xs font-bold text-slate-800 flex items-center justify-between gap-1 leading-none">
+        {/* Department Statistics Simple Bar Chart Widget */}
+        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-3">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+            <h4 className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5">
+              <BarChart3 className="w-4 h-4 text-emerald-600" />
+              <span>وضعیت دپارتمان {currentUser.unit !== 'عمومی' ? currentUser.unit : ''}</span>
+            </h4>
+            <div className="flex items-center gap-1.5">
+              {!isStatsCollapsed && (
+                <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                  <button
+                    onClick={() => setStatsViewTab('chart')}
+                    className={`px-2 py-0.5 text-[9px] font-bold rounded-md transition-all cursor-pointer ${
+                      statsViewTab === 'chart' ? 'bg-white shadow-xs text-indigo-700' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    نمودار آماری
+                  </button>
+                  <button
+                    onClick={() => setStatsViewTab('recent')}
+                    className={`px-2 py-0.5 text-[9px] font-bold rounded-md transition-all cursor-pointer ${
+                      statsViewTab === 'recent' ? 'bg-white shadow-xs text-indigo-700' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    آخرین بررسی‌ها
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={() => setIsStatsCollapsed(!isStatsCollapsed)}
+                className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                title={isStatsCollapsed ? "نمایش ویجت" : "پنهان کردن ویجت"}
+              >
+                {isStatsCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {!isStatsCollapsed && (
+            <>
+              {statsViewTab === 'chart' ? (
+                <div className="space-y-3.5 text-xs py-1">
+                  {/* Approved Bar */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="font-semibold text-slate-600 flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                        تأیید و ارسال فرادستگاهی:
+                      </span>
+                      <span className="font-mono font-bold text-emerald-700">{approvedCount} فرم ({totalBoth > 0 ? Math.round(approvedPercent) : 0}٪)</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                      <div
+                        className="bg-emerald-500 h-full rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${totalBoth > 0 ? approvedPercent : 0}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Returned Bar */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="font-semibold text-slate-600 flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                        عودت داده شده به سرپرست:
+                      </span>
+                      <span className="font-mono font-bold text-rose-700">{returnedCount} فرم ({totalBoth > 0 ? Math.round(returnedPercent) : 0}٪)</span>
+                    </div>
+                    <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+                      <div
+                        className="bg-rose-500 h-full rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${totalBoth > 0 ? returnedPercent : 0}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+                  {recentlyProcessed.length === 0 ? (
+                    <p className="text-[10px] text-slate-400 text-center py-5">هیچ فرمی اخیراً بررسی نشده است.</p>
+                  ) : (
+                    recentlyProcessed.slice(0, 5).map(s => {
+                      const isApproved = s.status === 'sent_to_president' || s.status === 'approved_by_president' || s.managerApprovedAt !== null;
+                      return (
+                        <div key={s.id} className="p-2 border border-slate-100 rounded-lg text-xs flex flex-col gap-1 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                          <div className="flex justify-between items-center">
+                            <span className="font-bold text-slate-700 truncate max-w-[170px]">{s.templateTitle}</span>
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                              isApproved ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                            }`}>
+                              {isApproved ? 'تأیید و ارسال' : 'عودت داده شده'}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-[10px] text-slate-400 mt-0.5">
+                            <span>متقاضی: {s.staffName} ({s.unit})</span>
+                            <span className="font-mono text-[9px]">{s.managerApprovedAt || s.createdAt}</span>
+                          </div>
+                          {s.managerComment && (
+                            <p className="text-[9px] text-slate-500 line-clamp-1 italic bg-white px-1.5 py-0.5 rounded border border-slate-100 mt-0.5">💬 {s.managerComment}</p>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+
+              <div className="pt-2 border-t border-slate-100 flex justify-between items-center text-[9px] text-slate-400">
+                <span>کل اقدامات بررسی شده: {totalBoth} مورد</span>
+                <span>بایگانی دیجیتال پویان</span>
+              </div>
+            </>
+          )}
+        </div>
+
+        <h3 className="text-xs font-bold text-slate-800 flex items-center justify-between gap-1 leading-none pt-2">
           <span className="flex items-center gap-1.5">
             <Newspaper className="w-4 h-4 text-emerald-500" />
             کارتابل تائید مدیران دپارتمان ({pendingSubmissions.length})

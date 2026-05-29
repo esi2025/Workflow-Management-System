@@ -1,1 +1,171 @@
 @import "tailwindcss";
+
+/* Comprehensive Corporate Dark/Night Mode Styling Overrides */
+.dark body {
+  background-color: #020617 !important; /* deep slate-950 */
+  color: #f8fafc !important; /* slate-50 */
+}
+
+.dark #app-root {
+  background-color: #020617 !important;
+}
+
+/* Dark Modal & Cards */
+.dark .bg-white {
+  background-color: #0f172a !important; /* slate-900 */
+  color: #f1f5f9 !important;
+}
+
+/* text colours adjustment */
+.dark .text-slate-900,
+.dark .text-slate-800 {
+  color: #f8fafc !important;
+}
+
+.dark .text-slate-700 {
+  color: #e2e8f0 !important;
+}
+
+.dark .text-slate-600 {
+  color: #cbd5e1 !important;
+}
+
+.dark .text-slate-500 {
+  color: #94a3b8 !important;
+}
+
+.dark .text-slate-400 {
+  color: #64748b !important;
+}
+
+/* Card Borders adjustment */
+.dark .border-slate-200,
+.dark .border-slate-100 {
+  border-color: #1e293b !important; /* slate-800 */
+}
+
+/* Background Slate classes adjustment */
+.dark .bg-slate-50,
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50\/30 {
+  background-color: #1e293b !important;
+  color: #e2e8f0 !important;
+}
+
+.dark .bg-slate-100 {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+.dark .bg-slate-200 {
+  background-color: #334155 !important;
+}
+
+.dark .bg-indigo-50,
+.dark .bg-indigo-50\/50 {
+  background-color: #1e1b4b !important; /* deep indigo */
+  color: #e0e7ff !important;
+}
+
+.dark .text-indigo-700,
+.dark .text-indigo-600 {
+  color: #818cf8 !important; /* vibrant indigo/lavender */
+}
+
+.dark .bg-emerald-50,
+.dark .bg-emerald-50\/50 {
+  background-color: #064e3b !important; /* deep green */
+  color: #d1fae5 !important;
+}
+
+.dark .text-emerald-700,
+.dark .text-emerald-600 {
+  color: #34d399 !important; /* vibrant emerald */
+}
+
+.dark .bg-amber-50,
+.dark .bg-amber-50\/50 {
+  background-color: #78350f !important; /* deep amber */
+  color: #fef3c7 !important;
+}
+
+.dark .text-amber-700,
+.dark .text-amber-600 {
+  color: #fbbf24 !important; /* vibrant amber */
+}
+
+.dark .bg-orange-50 {
+  background-color: #7c2d12 !important; /* deep orange */
+  color: #ffedd5 !important;
+}
+
+.dark .text-orange-600 {
+  color: #fb923c !important; /* vibrant orange */
+}
+
+/* Table elements */
+.dark table {
+  background-color: #0f172a !important;
+}
+
+.dark thead {
+  background-color: #1e293b !important;
+  color: #94a3b8 !important;
+}
+
+.dark tbody tr:hover {
+  background-color: #1e293b / 80% !important;
+}
+
+.dark .divide-slate-100,
+.dark .divide-slate-200 {
+  border-color: #1e293b !important;
+}
+
+/* Input Fields & Textareas */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+  border-color: #f43f5e !important; /* rose-500 accent */
+  outline: none;
+}
+
+.dark option {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+/* Custom chart & interactive review borders */
+.dark .border-slate-300 {
+  border-color: #334155 !important;
+}
+
+/* Reset confirm dialog / alert visual cues */
+.dark .bg-blue-50 {
+  background-color: #172554 !important;
+  color: #dbeafe !important;
+  border-color: #1e40af !important;
+}
+
+.dark .bg-blue-50 .text-blue-900 {
+  color: #eff6ff !important;
+}
+
+.dark .text-blue-600 {
+  color: #60a5fa !important;
+}
+
+/* Ensure micro-animations are butter smooth */
+.transition-colors {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 250ms;
+}
