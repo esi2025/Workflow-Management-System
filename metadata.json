@@ -1,0 +1,6 @@
+{
+  "name": "سامانه گردش کار درون سازمانی",
+  "description": "سیستم جامع گردش مکاتبات اداری، تعریف و تایید فرم‌های دپارتمانی به همراه شبیه‌ساز و پکیج کدهای توسعه PHP",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
