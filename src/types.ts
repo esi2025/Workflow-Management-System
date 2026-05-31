@@ -53,4 +53,6 @@ export interface FormSubmission {
   presidentName: string | null;
   
   status: 'draft' | 'sent_to_supervisor' | 'sent_to_manager' | 'sent_to_president' | 'approved_by_president';
+  startTime?: string;
+  endTime?: string;
 }
