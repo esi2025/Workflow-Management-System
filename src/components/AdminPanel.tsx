@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { User, FormTemplate, FormField } from '../types';
-import { Users, FileSpreadsheet, Plus, Trash2, Key, HelpCircle, Check, ListFilter, AlertCircle, Shield, FolderKanban } from 'lucide-react';
+import { User, FormTemplate, FormField, FormSubmission } from '../types';
+import { Users, FileSpreadsheet, Plus, Trash2, Key, HelpCircle, Check, ListFilter, AlertCircle, Shield, FolderKanban, Star, Upload, Image, BarChart2 } from 'lucide-react';
 
 interface AdminPanelProps {
   users: User[];
@@ -15,6 +15,10 @@ interface AdminPanelProps {
   projects: string[];
   onAddProject: (name: string) => void;
   onDeleteProject: (name: string) => void;
+  // added
+  submissions: FormSubmission[];
+  companyLogo: string | null;
+  onLogoChange: (logo: string | null) => void;
 }
 
 export default function AdminPanel({
@@ -29,17 +33,22 @@ export default function AdminPanel({
   onDeleteDepartment,
   projects,
   onAddProject,
-  onDeleteProject
+  onDeleteProject,
+  submissions,
+  companyLogo,
+  onLogoChange
 }: AdminPanelProps) {
   // Tabs
-  const [activeTab, setActiveTab] = useState<'templates' | 'users' | 'departments' | 'projects' | 'excel-guide'>('templates');
+  const [activeTab, setActiveTab] = useState<'templates' | 'users' | 'departments' | 'projects' | 'excel-guide' | 'assessment' | 'logo'>('users');
+  const [assessmentRoleFilter, setAssessmentRoleFilter] = useState<'all' | 'staff' | 'supervisor' | 'manager'>('all');
   
   // New User Form State
   const [newUserName, setNewUserName] = useState('');
   const [newUserCode, setNewUserCode] = useState('');
-  const [newUserRole, setNewUserRole] = useState<'staff' | 'supervisor' | 'manager' | 'president'>('staff');
+  const [newUserRole, setNewUserRole] = useState<'staff' | 'supervisor' | 'manager' | 'president' | 'admin'>('staff');
   const [newUserUnit, setNewUserUnit] = useState(departments[0] || 'فنی و مهندسی');
   const [newUserPassword, setNewUserPassword] = useState('123456');
+  const [selectedUserDepts, setSelectedUserDepts] = useState<string[]>([]);
 
   // New Template Form State
   const [newTemplateTitle, setNewTemplateTitle] = useState('');
@@ -185,19 +194,25 @@ export default function AdminPanel({
       return;
     }
 
+    // A manager can manage multiple departments, join them.
+    const finalUnit = newUserRole === 'manager' && selectedUserDepts.length > 0
+      ? selectedUserDepts.join(' و ')
+      : newUserUnit;
+
     const newUser: User = {
       id: `usr_${Date.now()}`,
       name: newUserName,
       code: newUserCode,
       role: newUserRole,
-      unit: newUserUnit,
+      unit: finalUnit,
       passwordHint: newUserPassword
     };
 
     onAddUser(newUser);
     setNewUserName('');
     setNewUserCode('');
-    alert(`کاربر جدید "${newUserName}" با کد پرسنلی "${newUserCode}" اضافه شد.`);
+    setSelectedUserDepts([]);
+    alert(`کاربر جدید "${newUserName}" با موفقیت در سامانه ثبت گردید.`);
   };
 
   return (
@@ -219,6 +234,202 @@ export default function AdminPanel({
         </div>
       </div>
 
+      {/* 👥 Dynamic User/Personnel Management Section (Always visible on Admin Homepage) */}
+      <div id="admin-main-users-panel" className="p-6 border-b border-slate-200 dark:border-slate-800 bg-slate-50/20 dark:bg-slate-950/20">
+        <div className="mb-4">
+          <h2 className="text-xs font-extrabold text-slate-800 dark:text-indigo-400 flex items-center gap-1.5 font-sans leading-none">
+            <Users className="w-4.5 h-4.5 text-rose-500 animate-none" />
+            <span>بخش مدیریت پرسنل و کاربران سیستم (صفحه اصلی ادمین)</span>
+          </h2>
+          <p className="text-[10px] text-slate-400 mt-1">امکان تعریف نامحدود کاربر، تخصیص کدهای پرسنلی معتبر، بازیابی رمزهای عبور فراموش‌شده و تنظیم بخش‌های تحت امضا.</p>
+        </div>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Create User Form */}
+          <form onSubmit={handleCreateUser} className="lg:col-span-4 bg-slate-100/50 dark:bg-slate-850 rounded-xl p-5 border border-slate-200 dark:border-slate-800 h-fit space-y-4">
+            <h3 className="text-xs font-bold text-slate-850 dark:text-slate-200 flex items-center gap-1.5 font-sans">
+              <Key className="w-4 h-4 text-rose-500 animate-none" />
+              تعریف یوزر جدید در شبکه سازمان
+            </h3>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">نام کامل کارمند / پرسنل</label>
+              <input
+                type="text"
+                placeholder="مثال: مهندس مهران طاهری"
+                value={newUserName}
+                onChange={(e) => setNewUserName(e.target.value)}
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs focus:outline-none focus:border-rose-500 text-slate-905 dark:text-slate-100"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">کد اختصاصی ورود (کد پرسنلی)</label>
+              <input
+                type="text"
+                placeholder="مثال: 1045"
+                value={newUserCode}
+                onChange={(e) => setNewUserCode(e.target.value)}
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs focus:outline-none focus:border-rose-500 text-slate-950 dark:text-slate-100"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">سطح نقش و تاییدات سازمانی</label>
+              <select
+                value={newUserRole}
+                onChange={(e) => setNewUserRole(e.target.value as any)}
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs focus:outline-none focus:border-rose-500 text-slate-905 dark:text-slate-100"
+              >
+                <option value="staff">کارشناس واحد (تکمیل کننده)</option>
+                <option value="supervisor">سرپرست واحد (تایید اول و یادداشت)</option>
+                <option value="manager">مدیر کل دپارتمان (تایید دوم - مدیریت چند دپارتمان)</option>
+                <option value="president">رئیس کل شرکت / جانشین مدیر پروژه (تایید نهایی و مهر)</option>
+                <option value="admin">ادمین سیستم (دسترسی همه‌جانبه)</option>
+              </select>
+            </div>
+
+            {newUserRole === 'manager' ? (
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">انتخاب دپارتمان‌های تحت نظارت (چند انتخابی)</label>
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2.5 max-h-36 overflow-y-auto space-y-1.5 step-scroll">
+                  {departments.map(dept => {
+                    const isChecked = selectedUserDepts.includes(dept);
+                    return (
+                      <label key={dept} className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 p-1 rounded">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedUserDepts(prev => [...prev, dept]);
+                            } else {
+                              setSelectedUserDepts(prev => prev.filter(d => d !== dept));
+                            }
+                          }}
+                          className="rounded border-slate-300 text-rose-600 focus:ring-rose-500 w-3.5 h-3.5"
+                        />
+                        <span>{dept}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-[10px] text-slate-400 mt-1">مدیر انتخابی به عنوان مسئول تایید اسناد تمام بخش‌های تیک‌خورده منصوب خواهد شد.</p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">انتخاب واحد یا دپارتمان مربوطه</label>
+                <select
+                  value={newUserUnit}
+                  onChange={(e) => setNewUserUnit(e.target.value)}
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none"
+                >
+                  <option value="عمومی">عمومی سازمان</option>
+                  {departments.map(dept => (
+                    <option key={dept} value={dept}>{dept}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">رمز عبور اختصاصی اولیه</label>
+              <input
+                type="text"
+                placeholder="پیش فرض: 123456"
+                value={newUserPassword}
+                onChange={(e) => setNewUserPassword(e.target.value)}
+                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs focus:outline-none text-slate-955 dark:text-slate-100"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg p-2 text-xs transition-colors cursor-pointer"
+            >
+              ایجاد اکانت و پرسنل جدید
+            </button>
+          </form>
+
+          {/* Live Users Table */}
+          <div className="lg:col-span-8 space-y-4">
+            <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+              <span>کاربران تعریف شده در پورتال اداری ({users.length} یوزر مرجع)</span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">پرتال نظارت و ابطال سطوح دسترسی ورود و کلمه‌های عبور</span>
+            </h3>
+
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
+              <table className="w-full text-xs text-right text-slate-600 dark:text-slate-300">
+                <thead className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-500 border-b border-slate-200 dark:border-slate-800/80">
+                  <tr>
+                    <th className="p-3">نام و مشخصات کارمند</th>
+                    <th className="p-3">کد اختصاصی ورود</th>
+                    <th className="p-3">واحد اداری</th>
+                    <th className="p-3">سطح دسترسی</th>
+                    <th className="p-3">رمز عبور</th>
+                    <th className="p-2 text-left">عملیات ابطال</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                  {users.map(u => (
+                    <tr key={u.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
+                      <td className="p-3 font-semibold text-slate-800 dark:text-slate-200">{u.name}</td>
+                      <td className="p-3 font-mono font-bold text-slate-600 dark:text-slate-400">{u.code}</td>
+                      <td className="p-3 text-slate-500 dark:text-slate-400">{u.unit}</td>
+                      <td className="p-3">
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          u.role === 'admin' ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' :
+                          u.role === 'president' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400' :
+                          u.role === 'manager' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' :
+                          u.role === 'supervisor' ? 'bg-sky-100 text-sky-800 dark:bg-sky-950/40 dark:text-sky-400' :
+                          'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                        }`}>
+                          {u.role === 'admin' ? 'مدیر سیستم' :
+                           u.role === 'president' ? 'رئیس محترم شرکت' :
+                           u.role === 'manager' ? 'مدیر دپارتمان' :
+                           u.role === 'supervisor' ? 'سرپرست واحد' : 'کارشناس واحد'}
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-[10px] font-mono">{u.passwordHint}</code>
+                      </td>
+                      <td className="p-3 text-left">
+                        {u.code === 'admin' || u.code === '9001' ? (
+                          <span className="text-[9px] text-slate-400 font-bold bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded">محافظت شده</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (confirm(`آیا از حذف پرسنل "${u.name}" و ابطال دسترسی‌های ورود وی مطمئن هستید؟`)) {
+                                onDeleteUser(u.id);
+                                alert('پرسنل فرضی با موفقیت از سیستم اداری حذف شد.');
+                              }
+                            }}
+                            className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-955/20 px-2 py-0.5 rounded transition-all text-[10px] cursor-pointer"
+                          >
+                            ابطال اکانت
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ⚙️ Other Config Tabs */}
+      <div className="bg-slate-100 dark:bg-slate-800/40 p-4 px-6 border-b border-slate-200 dark:border-slate-800">
+        <h3 className="text-xs font-extrabold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 leading-none">
+          <span>⚙️ سایر ابزارها و تنظیمات پورتال سازمان (قالب فرم‌ها، دپارتمان‌ها و پروژه‌ها)</span>
+        </h3>
+      </div>
+
       {/* Tabs */}
       <div className="flex flex-wrap border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850">
         <button
@@ -231,17 +442,6 @@ export default function AdminPanel({
         >
           <FileSpreadsheet className="w-4 h-4" />
           <span>طراحی فرم‌ها</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('users')}
-          className={`flex items-center gap-2 px-5 py-3 text-xs font-semibold cursor-pointer border-b-2 transition-all ${
-            activeTab === 'users'
-              ? 'border-rose-500 text-rose-600 dark:text-rose-400 bg-white dark:bg-slate-900'
-              : 'border-transparent text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-slate-200'
-          }`}
-        >
-          <Users className="w-4 h-4" />
-          <span>تعریف پرسنل و دسترسی‌ها</span>
         </button>
         <button
           onClick={() => setActiveTab('departments')}
@@ -275,6 +475,28 @@ export default function AdminPanel({
         >
           <HelpCircle className="w-4 h-4" />
           <span>راهنمای ساختار اکسل</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('assessment')}
+          className={`flex items-center gap-2 px-5 py-3 text-xs font-semibold cursor-pointer border-b-2 transition-all ${
+            activeTab === 'assessment'
+              ? 'border-rose-500 text-rose-600 dark:text-rose-400 bg-white dark:bg-slate-900'
+              : 'border-transparent text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          <BarChart2 className="w-4 h-4" />
+          <span>پرسنل‌سنجی هم‌تراز</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('logo')}
+          className={`flex items-center gap-2 px-5 py-3 text-xs font-semibold cursor-pointer border-b-2 transition-all ${
+            activeTab === 'logo'
+              ? 'border-rose-500 text-rose-600 dark:text-rose-400 bg-white dark:bg-slate-900'
+              : 'border-transparent text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          <Upload className="w-4 h-4" />
+          <span>تنظیمات لوگوی سازمان</span>
         </button>
       </div>
 
@@ -413,7 +635,7 @@ export default function AdminPanel({
             {/* Existing Form templates list */}
             <div className="lg:col-span-5 space-y-4">
               <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <span className="inline-block p-1 bg-indigo-150 rounded text-indigo-700">≣</span>
+                <span className="inline-block p-1 bg-indigo-50 dark:bg-indigo-950/40 rounded text-indigo-700 dark:text-indigo-400">≣</span>
                 کتابخانه فرم‌های فعال شبکه ({templates.length} فرم)
               </h3>
 
@@ -421,7 +643,7 @@ export default function AdminPanel({
                 {templates.map(tmpl => (
                   <div key={tmpl.id} className="bg-white dark:bg-slate-905 border border-slate-200 dark:border-slate-800 rounded-lg p-4 shadow-xs relative hover:border-slate-350 transition-all">
                     <div className="flex justify-between items-start mb-2">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-105 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
                         {tmpl.unit}
                       </span>
                       <button
@@ -430,7 +652,7 @@ export default function AdminPanel({
                             onDeleteTemplate(tmpl.id);
                           }
                         }}
-                        className="text-slate-400 hover:text-rose-600 p-1 transition-colors cursor-pointer"
+                        className="text-slate-450 hover:text-rose-600 p-1 transition-colors cursor-pointer"
                         title="حذف فرم"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -452,156 +674,6 @@ export default function AdminPanel({
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'users' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Create User Form */}
-            <form onSubmit={handleCreateUser} className="lg:col-span-4 bg-slate-50 dark:bg-slate-850 rounded-xl p-5 border border-slate-200 dark:border-slate-800 h-fit space-y-4">
-              <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 font-sans">
-                <Key className="w-4 h-4 text-rose-500" />
-                تعریف یوزر جدید در شبکه سازمان
-              </h3>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">نام کامل کارمند / پرسنل</label>
-                <input
-                  type="text"
-                  placeholder="مثال: مهندس مهران طاهری"
-                  value={newUserName}
-                  onChange={(e) => setNewUserName(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs focus:outline-none focus:border-rose-500 text-slate-900 dark:text-slate-100"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">کد اختصاصی ورود (کد پرسنلی)</label>
-                <input
-                  type="text"
-                  placeholder="مثال: 1045"
-                  value={newUserCode}
-                  onChange={(e) => setNewUserCode(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs focus:outline-none focus:border-rose-500 text-slate-950 dark:text-slate-100"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">سطح نقش و تاییدات سازمانی</label>
-                <select
-                  value={newUserRole}
-                  onChange={(e) => setNewUserRole(e.target.value as any)}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs focus:outline-none focus:border-rose-500 text-slate-900 dark:text-slate-100"
-                >
-                  <option value="staff">کارشناس واحد (تکمیل کننده)</option>
-                  <option value="supervisor">سرپرست واحد (تایید اول و یادداشت)</option>
-                  <option value="manager">مدیر کل دپارتمان (تایید دوم)</option>
-                  <option value="president">رئیس کل شرکت (تایید نهایی و مهر)</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">انتخاب واحد یا دپارتمان مربوطه</label>
-                <select
-                  value={newUserUnit}
-                  onChange={(e) => setNewUserUnit(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none"
-                >
-                  <option value="عمومی">عمومی سازمان</option>
-                  {departments.map(dept => (
-                    <option key={dept} value={dept}>{dept}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">رمز عبور اختصاصی اولیه</label>
-                <input
-                  type="text"
-                  placeholder="پیش فرض: 123456"
-                  value={newUserPassword}
-                  onChange={(e) => setNewUserPassword(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-2 text-xs focus:outline-none text-slate-950 dark:text-slate-100"
-                  required
-                />
-              </div>
-
-              <button
-                type="submit"
-                className="w-full bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg p-2 text-xs transition-colors cursor-pointer"
-              >
-                ایجاد اکانت و پرسنل جدید
-              </button>
-            </form>
-
-            {/* Live Users Table */}
-            <div className="lg:col-span-8 space-y-4">
-              <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center justify-between">
-                <span>کاربران تعریف شده در پورتال اداری ({users.length} یوزر)</span>
-                <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal">پرتال نظارت و کنترل سطوح امنیتی کاربری و کلمه‌های عبور</span>
-              </h3>
-
-              <div className="bg-white dark:bg-slate-905 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-xs">
-                <table className="w-full text-xs text-right text-slate-600 dark:text-slate-300">
-                  <thead className="bg-slate-50 dark:bg-slate-800 text-[10px] text-slate-500 border-b border-slate-200 dark:border-slate-800/80">
-                    <tr>
-                      <th className="p-3">نام و مشخصات کارمند</th>
-                      <th className="p-3">کد اختصاصی ورود</th>
-                      <th className="p-3">واحد اداری</th>
-                      <th className="p-3">سطح دسترسی</th>
-                      <th className="p-3">رمز عبور</th>
-                      <th className="p-3 text-left">عملیات</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                    {users.map(u => (
-                      <tr key={u.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
-                        <td className="p-3 font-semibold text-slate-800 dark:text-slate-200">{u.name}</td>
-                        <td className="p-3 font-mono font-bold text-slate-600 dark:text-slate-400">{u.code}</td>
-                        <td className="p-3 text-slate-500 dark:text-slate-400">{u.unit}</td>
-                        <td className="p-3">
-                          <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold ${
-                            u.role === 'admin' ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' :
-                            u.role === 'president' ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400' :
-                            u.role === 'manager' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400' :
-                            u.role === 'supervisor' ? 'bg-sky-100 text-sky-800 dark:bg-sky-950/40 dark:text-sky-400' :
-                            'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                          }`}>
-                            {u.role === 'admin' ? 'مدیر سیستم' :
-                             u.role === 'president' ? 'رئیس محترم شرکت' :
-                             u.role === 'manager' ? 'مدیر دپارتمان' :
-                             u.role === 'supervisor' ? 'سرپرست واحد' : 'کارشناس واحد'}
-                          </span>
-                        </td>
-                        <td className="p-3">
-                          <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-[10px] font-mono">{u.passwordHint}</code>
-                        </td>
-                        <td className="p-3 text-left">
-                          {u.code === 'admin' || u.code === '9001' ? (
-                            <span className="text-[9px] text-slate-400 font-bold bg-slate-50 dark:bg-slate-800 px-1.5 py-0.5 rounded">محافظت شده</span>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (confirm(`آیا از حذف پرسنل "${u.name}" و ابطال دسترسی‌های ورود وی مطمئن هستید؟`)) {
-                                  onDeleteUser(u.id);
-                                  alert('پرسنل فرضی با موفقیت از سیستم اداری حذف شد.');
-                                }
-                              }}
-                              className="text-rose-500 hover:text-rose-700 hover:bg-rose-50 dark:hover:bg-rose-955/20 px-2 py-0.5 rounded transition-all text-[10px] cursor-pointer"
-                            >
-                              ابطال اکانت
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
               </div>
             </div>
           </div>
@@ -829,6 +901,244 @@ export default function AdminPanel({
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Assessment and Personnel Performance Comparison Tab */}
+        {activeTab === 'assessment' && (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-l from-slate-900 to-indigo-950 text-white p-5 rounded-2xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <BarChart2 className="w-5 h-5 text-indigo-400 font-bold" />
+                  بررسی کارایی، حجم گزارش‌ها و کیفیت تاییدات پرسنلی
+                </h3>
+                <p className="text-xs text-slate-300 mt-1">
+                  سامانه سنجش کمیت مکاتبات ثبت شده و میانگین رضایت‌مندی (امتیاز ستاره‌ای) اختصاص یافته به اسناد دپارتمان‌ها
+                </p>
+              </div>
+              <div className="bg-indigo-900/30 p-3 rounded-xl border border-indigo-500/20 text-right">
+                <span className="block text-[10px] text-indigo-300 font-semibold mb-0.5">کل اسناد نمره‌دهی شده در شبکه</span>
+                <span className="font-mono text-base font-bold text-indigo-400 block">
+                  {submissions.filter(s => s.rating !== undefined).length} گزارش ارزیابی شده
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white dark:bg-slate-905 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+                <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200">جدول هم‌سنجی رتبه‌بندی عملکرد پرسنل به تفکیک رده کاربری</h4>
+                
+                {/* Visual role selector filter */}
+                <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg text-xs gap-1 border border-slate-200/50 dark:border-slate-800">
+                  {(['all', 'staff', 'supervisor', 'manager'] as const).map(roleOption => (
+                    <button
+                      key={roleOption}
+                      type="button"
+                      onClick={() => setAssessmentRoleFilter(roleOption)}
+                      className={`px-3 py-1.5 rounded-md font-semibold transition-all cursor-pointer ${
+                        assessmentRoleFilter === roleOption
+                          ? 'bg-white dark:bg-slate-800 shadow-xs text-slate-900 dark:text-slate-100'
+                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      {roleOption === 'all' ? 'همه رده‌ها' :
+                       roleOption === 'staff' ? 'کارشناسان' :
+                       roleOption === 'supervisor' ? 'سرپرستان' : 'مدیران دپارتمان'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Data Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-right text-slate-650 dark:text-slate-300">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 text-[10px] text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                    <tr>
+                      <th className="p-3">نام و نام خانوادگی</th>
+                      <th className="p-3">رده سازمانی</th>
+                      <th className="p-3">دپارتمان مربوطه</th>
+                      <th className="p-3 text-center">تعداد اسناد پردازش شده</th>
+                      <th className="p-3 text-center">میانگین کیفیت (ستاره)</th>
+                      <th className="p-3">سطح کیفی / تراز عملکرد</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                    {users
+                      .filter(u => assessmentRoleFilter === 'all' || u.role === assessmentRoleFilter)
+                      .filter(u => u.role !== 'admin') // exclude admin
+                      .map(u => {
+                        let totalReports = 0;
+                        let ratedReports: any[] = [];
+                        
+                        if (u.role === 'staff') {
+                          // staff is the author
+                          const matches = submissions.filter(s => s.staffId === u.id);
+                          totalReports = matches.length;
+                          ratedReports = matches.filter(s => s.rating !== undefined);
+                        } else if (u.role === 'supervisor') {
+                          // supervisor signed or handled
+                          const matches = submissions.filter(s => s.supervisorName === u.name);
+                          totalReports = matches.length;
+                          ratedReports = matches.filter(s => s.rating !== undefined);
+                        } else if (u.role === 'manager') {
+                          // manager sign-off
+                          const matches = submissions.filter(s => s.managerName === u.name);
+                          totalReports = matches.length;
+                          ratedReports = matches.filter(s => s.rating !== undefined);
+                        } else if (u.role === 'president') {
+                          // president final oversight
+                          const matches = submissions.filter(s => s.status === 'approved_by_president');
+                          totalReports = matches.length;
+                          ratedReports = matches.filter(s => s.rating !== undefined);
+                        }
+
+                        const avgRating = ratedReports.length > 0 
+                          ? ratedReports.reduce((sum, s) => sum + (s.rating || 0), 0) / ratedReports.length 
+                          : 0;
+
+                        // Performance tier logic
+                        let performanceBadge = (
+                          <span className="bg-slate-100 dark:bg-slate-800 text-slate-400 text-[10px] px-2 py-0.5 rounded-full">
+                            پایدار (فاقد ارزیابی ستاره‌ای)
+                          </span>
+                        );
+                        if (totalReports > 0) {
+                          if (avgRating >= 4.5) {
+                            performanceBadge = (
+                              <span className="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-[10px] px-2.5 py-0.5 rounded-full font-bold border border-emerald-500/10">
+                                عالی (رتبه ممتاز) ★★★
+                              </span>
+                            );
+                          } else if (avgRating >= 3.0) {
+                            performanceBadge = (
+                              <span className="bg-indigo-50 dark:bg-indigo-950/30 text-indigo-650 dark:text-indigo-400 text-[10px] px-2.5 py-0.5 rounded-full font-bold border border-indigo-500/10">
+                                مطلوب (شایسته تقدیر) ★★
+                              </span>
+                            );
+                          } else if (avgRating > 0) {
+                            performanceBadge = (
+                              <span className="bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 text-[10px] px-2.5 py-0.5 rounded-full font-bold border border-amber-500/10">
+                                رو به رشد (نیازمند دقت) ★
+                              </span>
+                            );
+                          } else {
+                            performanceBadge = (
+                              <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] px-2.5 py-0.5 rounded-full">
+                                بدون امتیازدهی
+                              </span>
+                            );
+                          }
+                        }
+
+                        return (
+                          <tr key={u.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
+                            <td className="p-3 font-semibold text-slate-800 dark:text-slate-100">{u.name}</td>
+                            <td className="p-3 font-bold text-slate-500 dark:text-slate-400">
+                              {u.role === 'staff' ? 'کارشناس واحد' :
+                               u.role === 'supervisor' ? 'سرپرست بخش' :
+                               u.role === 'manager' ? 'مدیر دپارتمان' : 'رئیس شرکت'}
+                            </td>
+                            <td className="p-3 text-slate-500 dark:text-slate-400">{u.unit}</td>
+                            <td className="p-3 text-center font-mono font-bold text-slate-700 dark:text-slate-300">{totalReports} گزارش</td>
+                            <td className="p-3 text-center">
+                              {avgRating > 0 ? (
+                                <div className="flex items-center justify-center gap-1">
+                                  <span className="font-mono font-bold text-amber-500">{avgRating.toFixed(1)}</span>
+                                  <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                                </div>
+                              ) : (
+                                <span className="text-slate-400">-</span>
+                              )}
+                            </td>
+                            <td className="p-3">{performanceBadge}</td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Corporate Logo Settings Upload Tab */}
+        {activeTab === 'logo' && (
+          <div className="space-y-6">
+            <div className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4">
+              <div>
+                <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 font-sans">
+                  <Upload className="w-4 h-4 text-rose-500" />
+                  بارگذاری نشان و لوگوی اختصاصی سازمان
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  شما به عنوان ادمین کل پورتال مکتوب سازمان می‌توانید نشان اختصاصی کارفرما یا هلدینگ را بارگذاری کنید تا در سربرگ تمام فرم‌ها و همچنین نسخه چاپی PDF اسناد قرار گیرد.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+                {/* Uploader section */}
+                <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-6 text-center hover:border-slate-400 dark:hover:border-slate-600 transition-all">
+                  <div className="flex flex-col items-center justify-center gap-3">
+                    <div className="p-3 bg-rose-50 dark:bg-rose-950/30 rounded-full text-rose-500">
+                      <Image className="w-6 h-6 animate-none" />
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-slate-705 dark:text-slate-200">فایل تصویر لوگو را بفرستید</p>
+                      <p className="text-[10px] text-slate-400">فرمت‌های پشتیبانی شده PNG, JPG, SVG تا سقف یک مگابایت</p>
+                    </div>
+
+                    <label className="bg-rose-600 hover:bg-rose-700 text-white font-bold px-4 py-2 rounded-lg text-xs transition-colors cursor-pointer block mt-2 shadow-xs">
+                      جستجو در سیستم
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            const reader = new FileReader();
+                            reader.onload = (event) => {
+                              onLogoChange(event.target?.result as string);
+                              alert('لوگوی با موفقیت بارگذاری و در سربرگ پورتال اعمال گردید.');
+                            };
+                            reader.readAsDataURL(e.target.files[0]);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Preview Section */}
+                <div className="bg-slate-100/50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 flex flex-col items-center justify-center min-h-[170px] space-y-4">
+                  <p className="text-[10px] font-bold text-slate-450 dark:text-slate-400 uppercase tracking-wider">نمای زنده سربرگ پورتال</p>
+                  
+                  {companyLogo ? (
+                    <div className="space-y-3 text-center">
+                      <div className="bg-white dark:bg-slate-950 p-3 rounded-lg border border-slate-200 dark:border-slate-800 flex items-center justify-center h-16 w-36 shadow-xs mx-auto">
+                        <img src={companyLogo} alt="پیش‌نمایش لوگو" className="max-h-full max-w-full object-contain" referrerPolicy="no-referrer" />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onLogoChange(null);
+                          alert('نشان سفارشی حذف و لوگوی پیش‌فرض هماهنگ گردید.');
+                        }}
+                        className="text-[10px] font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
+                      >
+                        حذف لوگو و بازگشت به مقدار پیش‌فرض
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center text-slate-400 py-4">
+                      <p className="text-xs">در حال حاضر از نشان سیستمی پیش‌فرض استفاده می‌شود.</p>
+                      <p className="text-[10px] text-slate-500 mt-2">برای تغییر، یک تصویر لوگوی با پس‌زمینه سفید یا شفاف آپلود کنید.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}

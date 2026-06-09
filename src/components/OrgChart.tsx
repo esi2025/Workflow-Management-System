@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Users, Award, Shield, Briefcase, ChevronDown, ChevronUp, Network, CheckCircle, ArrowDown } from 'lucide-react';
+import { Users, Award, Shield, Briefcase, ChevronDown, ChevronUp, Network, CheckCircle, ArrowDown, LayoutDashboard, ArrowRight, Home } from 'lucide-react';
 
 interface OrgNodeProps {
   title: string;
@@ -67,39 +67,55 @@ function OrgNode({ title, name, role, unit, description, colorClass, borderColor
   );
 }
 
-export default function OrgChart() {
+interface OrgChartProps {
+  onReturnToMain?: () => void;
+}
+
+export default function OrgChart({ onReturnToMain }: OrgChartProps) {
   const [activeUnitTab, setActiveUnitTab] = useState<'all' | 'tech' | 'contracts' | 'dcc'>('all');
 
   return (
     <div id="org-chart-root" className="space-y-6" dir="rtl">
       
       {/* Top Banner */}
-      <div className="bg-slate-900 text-white p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm border border-slate-800">
-        <div className="flex items-center gap-3">
-          <div className="p-3 bg-indigo-500/15 rounded-xl text-indigo-400">
-            <Network className="w-7 h-7" />
+      <div className="bg-slate-900 text-white p-6 rounded-2xl flex flex-col lg:flex-row lg:items-center justify-between gap-4 shadow-sm border border-slate-800">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-rose-500/15 rounded-xl text-rose-450 shrink-0 border border-rose-500/20">
+            <Network className="w-7 h-7 text-rose-500" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-slate-100">چارت هوشمند و ساختار سلسله مراتب سازمانی</h1>
-            <p className="text-xs text-slate-400 mt-1">نمودار استاندارد ارجاع اسناد اداری، تاییدات سلسله‌مراتبی و مسیر جریان گزارش مکتوب پرسنل</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-base font-bold text-slate-100">چارت هوشمند و ساختار سلسله مراتب سازمانی</h1>
+              {onReturnToMain && (
+                <button
+                  type="button"
+                  onClick={onReturnToMain}
+                  className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-md cursor-pointer hover:scale-[1.02] active:scale-95 border border-rose-500"
+                >
+                  <Home className="w-4 h-4" />
+                  <span>← بازگشت به صفحه اصلی پورتال</span>
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-slate-400 mt-1.5">نمودار استاندارد ارجاع اسناد اداری، تاییدات سلسله‌مراتبی و مسیر جریان گزارش مکتوب پرسنل</p>
           </div>
         </div>
         
         {/* Dynamic Legend */}
         <div className="flex flex-wrap gap-2 text-[10px] font-bold">
-          <span className="flex items-center gap-1.5 px-3 py-1 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg">
+          <span className="flex items-center gap-1.5 px-3 py-1 bg-red-500/10 text-red-300 border border-red-500/20 rounded-lg">
             <span className="w-2 h-2 rounded-full bg-red-500" />
             سطح رئیس عالی
           </span>
-          <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg">
+          <span className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded-lg">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
             سطح مدیر دپارتمان
           </span>
-          <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded-lg">
+          <span className="flex items-center gap-1.5 px-3 py-1 bg-amber-500/10 text-amber-300 border border-amber-500/20 rounded-lg">
             <span className="w-2 h-2 rounded-full bg-amber-500" />
             سطح سرپرست کارگاه
           </span>
-          <span className="flex items-center gap-1.5 px-3 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-lg">
+          <span className="flex items-center gap-1.5 px-3 py-1 bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 rounded-lg">
             <span className="w-2 h-2 rounded-full bg-indigo-500" />
             سطح کارشناس فنی
           </span>

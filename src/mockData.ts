@@ -35,8 +35,8 @@ export const INITIAL_TEMPLATES: FormTemplate[] = [
     fields: [
       { id: 'proj_name', label: 'نام کامل پروژه یا کارگاه فعال', type: 'text', required: true },
       { id: 'progress_rate', label: 'درصد تقریبی پیشرفت فیزیکی کار', type: 'number', required: true },
-      { id: 'tech_summary', label: 'خلاصه اقدامات فنی صورت گرفته و چالش‌ها', type: 'textarea', required: true },
-      { id: 'safety_check', label: 'تایید رعایت الزامات ایمنی و HSE در کارگاه', type: 'checkbox', required: true }
+      { id: 'tech_summary', label: 'توضیحات اقدامات انجام شده / خلاصه فعالیت برنامه ریزی شده برای روز کاری آینده.', type: 'textarea', required: true },
+      { id: 'safety_check', label: 'تأیید رعایت کامل پروتکل‌ها و الزامات سازمانی کارگاه', type: 'checkbox', required: true }
     ]
   },
   {
@@ -195,7 +195,8 @@ export const INITIAL_SUBMISSIONS: FormSubmission[] = [
     presidentComment: 'بسیار خوب، تامین هزینه این کار از سرفصل پایش فنی مورد موافقت است.',
     presidentApprovedAt: '2026-05-27 11:00',
     presidentName: 'جناب آقای مهندس رستمی (ریاست محترم شرکت)',
-    status: 'approved_by_president'
+    status: 'approved_by_president',
+    rating: 5
   },
   {
     id: 'tech_sub_5',
@@ -243,7 +244,8 @@ export const INITIAL_SUBMISSIONS: FormSubmission[] = [
     presidentComment: 'آفرین به تیم مجریان برج پایتخت. پاداش سرعت عمل کار در پرونده پیمانکار منظور شود.',
     presidentApprovedAt: '2026-05-25 16:20',
     presidentName: 'جناب آقای مهندس رستمی (ریاست محترم شرکت)',
-    status: 'approved_by_president'
+    status: 'approved_by_president',
+    rating: 4
   },
   {
     id: 'tech_sub_7',

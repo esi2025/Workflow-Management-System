@@ -387,8 +387,8 @@ export default function StaffFormSubmission({
                       <Clock className="w-3.5 h-3.5" />
                       زمان‌بندی تحقق عملکرد و مدت زمان اقدام
                     </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
+                    <div className="flex flex-wrap gap-4">
+                      <div className="w-32 sm:w-36">
                         <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
                           ساعت شروع عملکرد روزانه
                         </label>
@@ -400,7 +400,7 @@ export default function StaffFormSubmission({
                           required
                         />
                       </div>
-                      <div>
+                      <div className="w-32 sm:w-36">
                         <label className="block text-[10px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
                           ساعت پایان عملکرد روزانه
                         </label>

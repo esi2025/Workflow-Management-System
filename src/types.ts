@@ -55,4 +55,5 @@ export interface FormSubmission {
   status: 'draft' | 'sent_to_supervisor' | 'sent_to_manager' | 'sent_to_president' | 'approved_by_president';
   startTime?: string;
   endTime?: string;
+  rating?: number; // Star rating (1-5) given during reviews
 }
