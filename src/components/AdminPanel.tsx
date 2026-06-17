@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { User, FormTemplate, FormField, FormSubmission } from '../types';
-import { Users, FileSpreadsheet, Plus, Trash2, Key, HelpCircle, Check, ListFilter, AlertCircle, Shield, FolderKanban, Star, Upload, Image, BarChart2 } from 'lucide-react';
+import { User, FormTemplate, FormField, FormSubmission, WorkflowDeadlines } from '../types';
+import { Users, FileSpreadsheet, Plus, Trash2, Key, HelpCircle, Check, ListFilter, AlertCircle, Shield, FolderKanban, Star, Upload, Image, BarChart2, Clock } from 'lucide-react';
+import { toPersianDate } from '../utils/dateConverter';
+import SubmissionHistoryLog from './SubmissionHistoryLog';
 
 interface AdminPanelProps {
   users: User[];
@@ -19,6 +21,8 @@ interface AdminPanelProps {
   submissions: FormSubmission[];
   companyLogo: string | null;
   onLogoChange: (logo: string | null) => void;
+  deadlines: WorkflowDeadlines;
+  onUpdateDeadlines: (deadlines: WorkflowDeadlines) => void;
 }
 
 export default function AdminPanel({
@@ -36,10 +40,12 @@ export default function AdminPanel({
   onDeleteProject,
   submissions,
   companyLogo,
-  onLogoChange
+  onLogoChange,
+  deadlines,
+  onUpdateDeadlines
 }: AdminPanelProps) {
   // Tabs
-  const [activeTab, setActiveTab] = useState<'templates' | 'users' | 'departments' | 'projects' | 'excel-guide' | 'assessment' | 'logo'>('users');
+  const [activeTab, setActiveTab] = useState<'templates' | 'users' | 'departments' | 'projects' | 'excel-guide' | 'assessment' | 'logo' | 'audit-logs' | 'workflow-slas'>('users');
   const [assessmentRoleFilter, setAssessmentRoleFilter] = useState<'all' | 'staff' | 'supervisor' | 'manager'>('all');
   
   // New User Form State
@@ -498,6 +504,28 @@ export default function AdminPanel({
           <Upload className="w-4 h-4" />
           <span>تنظیمات لوگوی سازمان</span>
         </button>
+        <button
+          onClick={() => setActiveTab('audit-logs')}
+          className={`flex items-center gap-2 px-5 py-3 text-xs font-semibold cursor-pointer border-b-2 transition-all ${
+            activeTab === 'audit-logs'
+              ? 'border-rose-500 text-rose-600 dark:text-rose-400 bg-white dark:bg-slate-900'
+              : 'border-transparent text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          <Shield className="w-4 h-4 text-rose-500 animate-pulse" />
+          <span>پایش و لاگ رخدادها</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('workflow-slas')}
+          className={`flex items-center gap-2 px-5 py-3 text-xs font-semibold cursor-pointer border-b-2 transition-all ${
+            activeTab === 'workflow-slas'
+              ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-white dark:bg-slate-900'
+              : 'border-transparent text-slate-600 hover:text-slate-950 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          <Clock className="w-4 h-4 text-indigo-500" />
+          <span>تنظیمات مهلت زمانی (SLA)</span>
+        </button>
       </div>
 
       <div className="p-6">
@@ -660,7 +688,7 @@ export default function AdminPanel({
                     </div>
 
                     <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 mb-1">{tmpl.title}</h4>
-                    <span className="text-[10px] font-mono text-slate-400">تاریخ ساخت: {tmpl.createdAt}</span>
+                    <span className="text-[10px] font-bold text-slate-500">تاریخ ساخت: {toPersianDate(tmpl.createdAt)}</span>
 
                     <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
                       <p className="text-[10px] font-semibold text-slate-500 mb-1.5">فیلدهای کارشناسی قالب:</p>
@@ -1138,6 +1166,59 @@ export default function AdminPanel({
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Change Tracker History Log Tab */}
+        {activeTab === 'audit-logs' && (
+          <div className="space-y-6">
+            <div className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4 animate-fadeIn">
+              <div>
+                <h3 className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 font-sans leading-none">
+                  <Shield className="w-5 h-5 text-indigo-505" />
+                  <span>پورتال نظارت عالیه، لاگ سیستم و عیب‌یابی مکتوبات</span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  در این بخش کلیه فرم‌های ثبت شده سازمان به همراه تاریخچه کامل تغییرات (Audit Logs)، نام اشخاص بازبین، تاریخ و دفعات دقیق ارجاع و دفعات بازدید ثبت شده جهت پایش و بازرسی قرار دارد.
+                </p>
+              </div>
+
+              <div className="space-y-4">
+                {submissions.length === 0 ? (
+                  <div className="p-10 border border-slate-200 dark:border-slate-800 rounded-xl text-center text-slate-400">
+                    <AlertCircle className="w-8 h-8 mx-auto mb-2 text-slate-300 animate-pulse" />
+                    <p className="text-xs font-semibold">هیچ فرم یا دامی در سیستم ثبت نگردیده است.</p>
+                  </div>
+                ) : (
+                  [...submissions].reverse().map(sub => (
+                    <div key={sub.id} className="bg-white dark:bg-slate-900 border border-slate-250 dark:border-slate-800 rounded-xl p-4.5 space-y-4 shadow-sm transition-all hover:border-slate-400">
+                      <div className="flex flex-wrap justify-between items-center gap-4">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-slate-800 dark:text-slate-100 text-xs">« {sub.templateTitle} »</span>
+                            <span className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-0.5 rounded font-mono font-bold">شناسه سند: {sub.id}</span>
+                          </div>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">متقاضی گزارش: {sub.staffName} (کد پرسنلی: {sub.staffCode}) | دپارتمان: {sub.unit}</p>
+                        </div>
+                        <div className="text-left font-mono text-[9px] text-slate-400 flex flex-col gap-0.5">
+                          <span>ثبت اولیه: {toPersianDate(sub.createdAt)}</span>
+                          <span className="font-sans font-bold text-[9px] bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-100 dark:border-indigo-900 w-fit mr-auto self-end">وضعیت سند: {
+                            sub.status === 'draft' ? 'پیش‌نویس' :
+                            sub.status === 'sent_to_supervisor' ? 'ارجاع به سرپرست' :
+                            sub.status === 'sent_to_manager' ? 'ارجاع به مدیر' :
+                            sub.status === 'sent_to_president' ? 'تایید رئیس و نهایی' : 'بایگانی موافقت عالیه'
+                          }</span>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+                        <SubmissionHistoryLog submission={sub} />
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>

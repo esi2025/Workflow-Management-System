@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, FormTemplate, FormSubmission } from './types';
+import { User, FormTemplate, FormSubmission, WorkflowDeadlines } from './types';
 import { INITIAL_USERS, INITIAL_TEMPLATES, INITIAL_SUBMISSIONS } from './mockData';
 import RoleSelector from './components/RoleSelector';
 import AdminPanel from './components/AdminPanel';
@@ -9,7 +9,8 @@ import ManagerReview from './components/ManagerReview';
 import PresidentReview from './components/PresidentReview';
 import OrgChart from './components/OrgChart';
 import PhpSourceCodeGuide from './components/PhpSourceCodeGuide';
-import { LayoutDashboard, Award, Settings, CheckSquare, Shield, HelpCircle, Landmark, Sun, Moon, Network } from 'lucide-react';
+import Login from './components/Login';
+import { LayoutDashboard, Award, Settings, CheckSquare, Shield, HelpCircle, Landmark, Sun, Moon, Network, LogOut } from 'lucide-react';
 
 export default function App() {
   // Initialize States from localStorage if exists, else defaults
@@ -67,10 +68,8 @@ export default function App() {
     return localStorage.getItem('wf_dark_mode') === 'true';
   });
 
-  // Simulation current logged in user
-  const [currentUser, setCurrentUser] = useState<User>(() => {
-    return users.find(u => u.role === 'staff') || users[0];
-  });
+  // Simulation current logged in user (starts at null to force login page first)
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
 
   // Global Workspace Visual Active View
   // "workflow" simulates the live role interface, "org-chart" shows the organizational tree, "php-code" shows the developer/MySQL manual.
@@ -97,6 +96,20 @@ export default function App() {
     const saved = localStorage.getItem('wf_projects');
     return saved ? JSON.parse(saved) : ['پروژه سد هراز', 'بیمارستان بهشهر', 'برج پایتخت', 'تصفیه خانه ارومیه', 'نیروگاه قشم'];
   });
+
+  // Workflow SLAs / deadlines configuration state
+  const [deadlines, setDeadlines] = useState<WorkflowDeadlines>(() => {
+    const saved = localStorage.getItem('wf_deadlines');
+    return saved ? JSON.parse(saved) : {
+      supervisor: { value: 24, unit: 'h' },
+      manager: { value: 48, unit: 'h' },
+      president: { value: 72, unit: 'h' }
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('wf_deadlines', JSON.stringify(deadlines));
+  }, [deadlines]);
 
   // Traffic increment simulation on mount
   useEffect(() => {
@@ -131,7 +144,7 @@ export default function App() {
 
   // Protect php-code tab: if user ceases to be an admin, redirect them out of the PHP manual tab.
   useEffect(() => {
-    if (currentUser.role !== 'admin' && activeNavbarTab === 'php-code') {
+    if (currentUser?.role !== 'admin' && activeNavbarTab === 'php-code') {
       setActiveNavbarTab('workflow');
     }
   }, [currentUser, activeNavbarTab]);
@@ -196,8 +209,50 @@ export default function App() {
     }
   };
 
+  const handleRecordViewSubmission = (id: string, viewer: User) => {
+    setSubmissions(prev => prev.map(s => {
+      if (s.id === id) {
+        const logs = s.logs || [];
+        const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
+        
+        // Prevent duplicate sequential view logs by the same user to keep logs tidy
+        const lastLog = logs[logs.length - 1];
+        if (lastLog && lastLog.action === 'view' && lastLog.userName === viewer.name) {
+          return s; 
+        }
+
+        const newLogEntry = {
+          id: `log_${Date.now()}_view_${Math.random().toString(36).substr(2, 4)}`,
+          userName: viewer.name,
+          userRole: viewer.role,
+          action: 'view' as const,
+          actionLabel: 'مشاهده و بررسی جزئیات فرم',
+          timestamp: nowStr,
+        };
+
+        return {
+          ...s,
+          logs: [...logs, newLogEntry]
+        };
+      }
+      return s;
+    }));
+  };
+
   const handleCreateSubmission = (newSub: FormSubmission) => {
-    setSubmissions(prev => [newSub, ...prev]);
+    const freshLog = {
+      id: `log_${Date.now()}_create`,
+      userName: newSub.staffName,
+      userRole: 'staff',
+      action: 'create' as const,
+      actionLabel: 'ثبت اولیه فرم و ارسال جهت تایید',
+      timestamp: newSub.createdAt,
+    };
+    const subWithLog = {
+      ...newSub,
+      logs: [freshLog]
+    };
+    setSubmissions(prev => [subWithLog, ...prev]);
   };
 
   const handleDeleteSubmission = (id: string) => {
@@ -207,29 +262,53 @@ export default function App() {
   const handleApproveBySupervisor = (id: string, comment: string, supervisorName: string, rating?: number) => {
     setSubmissions(prev => prev.map(s => {
       if (s.id === id) {
+        const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
+        const approveLog = {
+          id: `log_${Date.now()}_sup_approve`,
+          userName: supervisorName,
+          userRole: 'supervisor',
+          action: 'approve' as const,
+          actionLabel: 'بررسی، تایید و ارجاع توسط سرپرست کارگاه',
+          timestamp: nowStr,
+          comment: comment
+        };
+        const currentLogs = s.logs || [];
         return {
           ...s,
           status: 'sent_to_manager',
           supervisorComment: comment,
           supervisorName: supervisorName,
-          supervisorApprovedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
-          rating: rating || s.rating
+          supervisorApprovedAt: nowStr,
+          rating: rating || s.rating,
+          logs: [...currentLogs, approveLog]
         };
       }
       return s;
     }));
   };
 
-  const handleRejectBySupervisor = (id: string) => {
+  const handleRejectBySupervisor = (id: string, name: string) => {
     setSubmissions(prev => prev.map(s => {
       if (s.id === id) {
+        const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
+        const rejectLog = {
+          id: `log_${Date.now()}_sup_reject`,
+          userName: name,
+          userRole: 'supervisor',
+          action: 'reject' as const,
+          actionLabel: 'مخالفت و ارجاع جهت اصلاح مدارک (عودت به کارشناس)',
+          timestamp: nowStr,
+          comment: 'عدم تایید مدارک و بازگردانی جهت اصلاح برقراری مجدد در پیش‌نویس ها'
+        };
+        const currentLogs = s.logs || [];
         return {
           ...s,
           status: 'draft', // Sent back to drafter's draft status
           supervisorComment: null,
           supervisorApprovedAt: null,
           supervisorName: null,
-          rating: undefined
+          rating: undefined,
+          logs: [...currentLogs, rejectLog]
         };
       }
       return s;
@@ -239,22 +318,45 @@ export default function App() {
   const handleApproveByManager = (id: string, comment: string, managerName: string, rating?: number) => {
     setSubmissions(prev => prev.map(s => {
       if (s.id === id) {
+        const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
+        const approveLog = {
+          id: `log_${Date.now()}_mgr_approve`,
+          userName: managerName,
+          userRole: 'manager',
+          action: 'approve' as const,
+          actionLabel: 'بررسی صحت، تایید و امضاء دیجیتال توسط مدیر ارشد دپارتمان فنی',
+          timestamp: nowStr,
+          comment: comment
+        };
+        const currentLogs = s.logs || [];
         return {
           ...s,
           status: 'sent_to_president',
           managerComment: comment,
           managerName: managerName,
-          managerApprovedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
-          rating: rating || s.rating
+          managerApprovedAt: nowStr,
+          rating: rating || s.rating,
+          logs: [...currentLogs, approveLog]
         };
       }
       return s;
     }));
   };
 
-  const handleRejectByManager = (id: string) => {
+  const handleRejectByManager = (id: string, name: string) => {
     setSubmissions(prev => prev.map(s => {
       if (s.id === id) {
+        const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
+        const rejectLog = {
+          id: `log_${Date.now()}_mgr_reject`,
+          userName: name,
+          userRole: 'manager',
+          action: 'reject' as const,
+          actionLabel: 'نیاز به بازنگری مجدد توسط مدیر دپارتمان عودت داده شد.',
+          timestamp: nowStr,
+          comment: 'مخالفت و بازگردانی پرونده به کارتابل سرپرست کارگاه جهت شفاف سازی'
+        };
+        const currentLogs = s.logs || [];
         return {
           ...s,
           status: 'sent_to_supervisor', // Reject back to supervisor level
@@ -263,7 +365,8 @@ export default function App() {
           managerName: null,
           supervisorComment: 'نیاز به شفاف سازی مجدد توسط مدیر دپارتمان عودت داده شد.',
           supervisorApprovedAt: null,
-          rating: undefined
+          rating: undefined,
+          logs: [...currentLogs, rejectLog]
         };
       }
       return s;
@@ -273,13 +376,25 @@ export default function App() {
   const handleApproveByPresident = (id: string, comment: string, presidentName: string, rating?: number) => {
     setSubmissions(prev => prev.map(s => {
       if (s.id === id) {
+        const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
+        const approveLog = {
+          id: `log_${Date.now()}_pres_approve`,
+          userName: presidentName,
+          userRole: 'president',
+          action: 'approve' as const,
+          actionLabel: 'توشیح نهایی عالی، مهر دیجیتال و ابلاغ قطعی پورتال توسط رئیس شرکت',
+          timestamp: nowStr,
+          comment: comment
+        };
+        const currentLogs = s.logs || [];
         return {
           ...s,
           status: 'approved_by_president',
           presidentComment: comment,
           presidentName: presidentName,
-          presidentApprovedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
-          rating: rating || s.rating
+          presidentApprovedAt: nowStr,
+          rating: rating || s.rating,
+          logs: [...currentLogs, approveLog]
         };
       }
       return s;
@@ -307,6 +422,10 @@ export default function App() {
   const countPendingManager = submissions.filter(s => s.status === 'sent_to_manager').length;
   const countPendingPresident = submissions.filter(s => s.status === 'sent_to_president').length;
   const countApproved = submissions.filter(s => s.status === 'approved_by_president').length;
+
+  if (!currentUser) {
+    return <Login users={users} onLoginSuccess={(user) => setCurrentUser(user)} />;
+  }
 
   return (
     <div id="app-root" className={`min-h-screen pb-12 font-sans transition-colors duration-250 ${darkMode ? 'bg-slate-950 text-slate-100 dark' : 'bg-slate-100 text-slate-900'}`} dir="rtl">
@@ -385,6 +504,16 @@ export default function App() {
               title={darkMode ? 'تغییر به تم روز' : 'تغییر به تم شب'}
             >
               {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-300" />}
+            </button>
+
+            {/* Logout button */}
+            <button
+              onClick={() => setCurrentUser(null)}
+              className="p-2.5 bg-rose-950/40 hover:bg-rose-900/40 border border-rose-800/50 text-rose-300 hover:text-white rounded-xl cursor-pointer transition-all shadow-md flex items-center gap-1.5 font-bold text-[11px]"
+              title="خروج از سامانه"
+            >
+              <LogOut className="w-4 h-4 text-rose-400" />
+              <span className="hidden sm:inline">خروج از سامانه</span>
             </button>
           </div>
         </div>
@@ -534,6 +663,7 @@ export default function App() {
                     templates={templates}
                     onApproveBySupervisor={handleApproveBySupervisor}
                     onRejectBySupervisor={handleRejectBySupervisor}
+                    onRecordView={handleRecordViewSubmission}
                   />
                 )}
 
@@ -544,6 +674,7 @@ export default function App() {
                     templates={templates}
                     onApproveByManager={handleApproveByManager}
                     onRejectByManager={handleRejectByManager}
+                    onRecordView={handleRecordViewSubmission}
                   />
                 )}
 
@@ -553,11 +684,11 @@ export default function App() {
                     submissions={submissions}
                     templates={templates}
                     onApproveByPresident={handleApproveByPresident}
+                    onRecordView={handleRecordViewSubmission}
                   />
                 )}
               </div>
             </div>
-
           </div>
         )}
 

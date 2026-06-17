@@ -1,19 +1,23 @@
 import React, { useState } from 'react';
 import { User, FormSubmission, FormTemplate } from '../types';
 import { Crown, CheckSquare, MessageSquare, Printer, Award, FileCheck, CheckCircle2, FileText, ChevronLeft } from 'lucide-react';
+import { toPersianDate } from '../utils/dateConverter';
+import SubmissionHistoryLog from './SubmissionHistoryLog';
 
 interface PresidentReviewProps {
   currentUser: User;
   submissions: FormSubmission[];
   templates: FormTemplate[];
   onApproveByPresident: (id: string, comment: string, presidentName: string) => void;
+  onRecordView?: (id: string, viewer: User) => void;
 }
 
 export default function PresidentReview({
   currentUser,
   submissions,
   templates,
-  onApproveByPresident
+  onApproveByPresident,
+  onRecordView
 }: PresidentReviewProps) {
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
   const [presidentComment, setPresidentComment] = useState('');
@@ -45,6 +49,17 @@ export default function PresidentReview({
     window.print();
   };
 
+  const handleSelectSub = (subId: string, isPrint: boolean) => {
+    setSelectedSubId(subId);
+    setShowPrintView(isPrint);
+    if (!isPrint) {
+      setPresidentComment('');
+    }
+    if (onRecordView) {
+      onRecordView(subId, currentUser);
+    }
+  };
+
   return (
     <div id="president-review-root" className="grid grid-cols-1 lg:grid-cols-12 gap-6" dir="rtl">
       {/* Sidebar: Requests queue */}
@@ -66,7 +81,7 @@ export default function PresidentReview({
               pendingSubmissions.map(sub => (
                 <button
                   key={sub.id}
-                  onClick={() => { setSelectedSubId(sub.id); setPresidentComment(''); setShowPrintView(false); }}
+                  onClick={() => handleSelectSub(sub.id, false)}
                   className={`w-full text-right bg-white border rounded-xl p-3.5 transition-all flex flex-col gap-1.5 cursor-pointer ${
                     selectedSubId === sub.id && !showPrintView
                       ? 'border-amber-600 ring-2 ring-amber-500/10 bg-amber-50/10'
@@ -74,7 +89,7 @@ export default function PresidentReview({
                   }`}
                 >
                   <div className="flex justify-between items-center w-full">
-                    <span className="text-[10px] font-mono text-slate-400">{sub.createdAt}</span>
+                    <span className="text-[10px] font-bold text-slate-500">{toPersianDate(sub.createdAt)}</span>
                     <span className="text-[9px] bg-rose-50 border border-rose-200 text-rose-700 font-bold px-1.5 py-0.5 rounded">نامه‌ ارجاعی فوری</span>
                   </div>
                   <h4 className="text-xs font-bold text-slate-800 line-clamp-1">{sub.templateTitle}</h4>
@@ -96,7 +111,7 @@ export default function PresidentReview({
             {approvedSubmissions.map(sub => (
               <button
                 key={sub.id}
-                onClick={() => { setSelectedSubId(sub.id); setShowPrintView(true); }}
+                onClick={() => handleSelectSub(sub.id, true)}
                 className={`w-full text-right bg-slate-50 border rounded-lg p-2.5 hover:bg-white hover:border-slate-300 transition-all text-xs flex items-center justify-between cursor-pointer ${
                   selectedSubId === sub.id && showPrintView ? 'border-indigo-500 bg-indigo-50/10' : 'border-slate-200'
                 }`}
@@ -146,9 +161,9 @@ export default function PresidentReview({
               
               {/* Cover Letterhead */}
               <div className="flex justify-between items-start border-b-2 border-slate-900 pb-5 mb-5">
-                <div className="text-right text-[11px] text-slate-500 w-1/3">
+                <div className="text-right text-[11px] text-slate-500 w-1/3 space-y-0.5">
                   <p>شماره اندیکاتور: <strong className="font-mono text-slate-700">۱۴۰۵/{selectedSub.id.replace('sub_', '')}</strong></p>
-                  <p>تاریخ ثبت درخواست: <strong className="font-mono text-slate-700">{selectedSub.createdAt.split(' ')[0]}</strong></p>
+                  <p>تاریخ ثبت درخواست: <strong className="text-slate-700">{toPersianDate(selectedSub.createdAt)}</strong></p>
                   <p>پیوست مدارک: <strong className="text-slate-700">{selectedSub.attachment ? 'دارد (فایل دیجیتال)' : 'ندارد'}</strong></p>
                 </div>
                 
@@ -213,7 +228,7 @@ export default function PresidentReview({
                   </div>
                   <div className="md:col-span-4 text-left md:border-r md:border-slate-300 pr-2">
                     <p className="font-bold text-slate-800">{selectedSub.staffName}</p>
-                    <p className="text-[10px] text-slate-500 font-mono">تاریخ امضا: {selectedSub.createdAt}</p>
+                    <p className="text-[10px] text-slate-500 font-sans">تاریخ امضا: {toPersianDate(selectedSub.createdAt)}</p>
                   </div>
                 </div>
 
@@ -228,7 +243,7 @@ export default function PresidentReview({
                     </div>
                     <div className="md:col-span-4 text-left md:border-r md:border-slate-300 pr-2">
                       <p className="font-bold text-slate-800">{selectedSub.supervisorName}</p>
-                      <p className="text-[10px] text-slate-500 font-mono">تاریخ امضا: {selectedSub.supervisorApprovedAt}</p>
+                      <p className="text-[10px] text-slate-500 font-sans">تاریخ امضا: {toPersianDate(selectedSub.supervisorApprovedAt)}</p>
                     </div>
                   </div>
                 )}
@@ -244,7 +259,7 @@ export default function PresidentReview({
                     </div>
                     <div className="md:col-span-4 text-left md:border-r md:border-slate-300 pr-2">
                       <p className="font-bold text-slate-800">{selectedSub.managerName}</p>
-                      <p className="text-[10px] text-slate-500 font-mono">تاریخ امضا: {selectedSub.managerApprovedAt}</p>
+                      <p className="text-[10px] text-slate-500 font-sans">تاریخ امضا: {toPersianDate(selectedSub.managerApprovedAt)}</p>
                     </div>
                   </div>
                 )}
@@ -260,7 +275,7 @@ export default function PresidentReview({
                     </div>
                     <div className="md:col-span-4 text-left md:border-r md:border-amber-300 pr-3">
                       <p className="font-bold text-amber-950 text-base font-serif">{selectedSub.presidentName}</p>
-                      <p className="text-[10px] text-amber-900 font-mono">تاریخ توشیح: {selectedSub.presidentApprovedAt}</p>
+                      <p className="text-[10px] text-amber-900 font-sans">تاریخ توشیح: {toPersianDate(selectedSub.presidentApprovedAt)}</p>
                       <div className="mt-3 inline-block border-2 border-emerald-600 text-emerald-700 px-3 py-1 text-[11px] rounded bg-emerald-100/50 font-bold uppercase rotate-[-3deg]">
                         مهر و امضا ابلاغ شد
                       </div>
@@ -268,6 +283,9 @@ export default function PresidentReview({
                   </div>
                 )}
               </div>
+
+              {/* Event Logs Trace Timeline */}
+              <SubmissionHistoryLog submission={selectedSub} />
 
               {/* Informative footer */}
               <div className="text-center text-[10px] text-slate-400 mt-10 pt-4 border-t border-slate-200">
@@ -360,6 +378,9 @@ export default function PresidentReview({
                   </button>
                 </div>
               </form>
+
+              {/* Event Logs Trace Timeline */}
+              <SubmissionHistoryLog submission={selectedSub} />
 
             </div>
           </div>

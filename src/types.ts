@@ -56,4 +56,25 @@ export interface FormSubmission {
   startTime?: string;
   endTime?: string;
   rating?: number; // Star rating (1-5) given during reviews
+  logs?: {
+    id: string;
+    userName: string;
+    userRole: string;
+    action: 'create' | 'view' | 'approve' | 'edit_or_update' | 'reject';
+    actionLabel: string;
+    timestamp: string; // ISO string or Gregorian date
+    comment?: string | null;
+  }[];
 }
+
+export interface StageDeadline {
+  value: number;
+  unit: 'm' | 'h' | 'd'; // minute, hour, day
+}
+
+export interface WorkflowDeadlines {
+  supervisor: StageDeadline;
+  manager: StageDeadline;
+  president: StageDeadline;
+}
+

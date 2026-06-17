@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { User, FormTemplate, FormSubmission } from '../types';
 import { FileText, Send, Paperclip, CheckCircle, Clock, AlertTriangle, ChevronRight, FileUp, Database, FileSpreadsheet, Play, Pause, Image as ImageIcon, FileCode, Video, Music } from 'lucide-react';
+import { toPersianDate } from '../utils/dateConverter';
+import SubmissionHistoryLog from './SubmissionHistoryLog';
 
 interface StaffFormSubmissionProps {
   currentUser: User;
@@ -33,6 +35,9 @@ export default function StaffFormSubmission({
   // Attachment State
   const [attachment, setAttachment] = useState<{ name: string; size: string; type: string; url?: string } | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  
+  // Collapsible logs tracking
+  const [openLogs, setOpenLogs] = useState<Record<string, boolean>>({});
   
   // Simulated sound state for demo
   const [isAudioPlaying, setIsAudioPlaying] = useState<Record<string, boolean>>({});
@@ -175,7 +180,7 @@ export default function StaffFormSubmission({
               return (
                 <div key={sub.id} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-slate-350 rounded-lg p-4 shadow-xs transition-all">
                   <div className="flex justify-between items-start mb-1 gap-2">
-                    <span className="text-[10px] font-mono text-slate-400">{sub.createdAt}</span>
+                    <span className="text-[10px] font-bold text-slate-500">{toPersianDate(sub.createdAt)}</span>
                     <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${curStatus?.color}`}>
                       {curStatus?.label}
                     </span>
@@ -304,6 +309,22 @@ export default function StaffFormSubmission({
                         </div>
                       ) : null}
                     </div>
+                  </div>
+
+                  {/* Collapsible workflow audit logs */}
+                  <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800">
+                    <button
+                      type="button"
+                      onClick={() => setOpenLogs(prev => ({ ...prev, [sub.id]: !prev[sub.id] }))}
+                      className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300 flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>⏱️ {openLogs[sub.id] ? 'بستن لاگ رخدادها' : 'مشاهده لاگ کامل گردش کار'}</span>
+                    </button>
+                    {openLogs[sub.id] && (
+                      <div className="mt-2 text-xs">
+                        <SubmissionHistoryLog submission={sub} />
+                      </div>
+                    )}
                   </div>
 
                   {sub.status === 'draft' && (

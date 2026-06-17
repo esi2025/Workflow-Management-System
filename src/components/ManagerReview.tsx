@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { User, FormSubmission, FormTemplate } from '../types';
 import { Newspaper, MessageSquare, Award, ArrowLeftRight, CheckCircle, HelpCircle, FileCheck, ThumbsDown, BarChart3, TrendingUp, RefreshCw, ChevronDown, ChevronUp, Clock, List } from 'lucide-react';
+import { toPersianDate } from '../utils/dateConverter';
+import SubmissionHistoryLog from './SubmissionHistoryLog';
 
 interface ManagerReviewProps {
   currentUser: User;
   submissions: FormSubmission[];
   templates: FormTemplate[];
   onApproveByManager: (id: string, comment: string, managerName: string) => void;
-  onRejectByManager: (id: string) => void;
+  onRejectByManager: (id: string, name: string) => void;
+  onRecordView?: (id: string, viewer: User) => void;
 }
 
 export default function ManagerReview({
@@ -15,7 +18,8 @@ export default function ManagerReview({
   submissions,
   templates,
   onApproveByManager,
-  onRejectByManager
+  onRejectByManager,
+  onRecordView
 }: ManagerReviewProps) {
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
   const [managerComment, setManagerComment] = useState('');
@@ -72,10 +76,18 @@ export default function ManagerReview({
   const handleReject = () => {
     if (!selectedSubId) return;
     if (confirm('آیا مایلید این فرم را جهت نیاز به بازنگری بیشتر به سرپرست تاییدکننده ارجاع دهید؟')) {
-      onRejectByManager(selectedSubId);
+      onRejectByManager(selectedSubId, currentUser.name);
       setSelectedSubId(null);
       setManagerComment('');
       alert('فرم با موفقیت جهت شفاف‌سازی بیشتر به کارتابل سرپرست عودت داده شد.');
+    }
+  };
+
+  const handleSelectSub = (subId: string) => {
+    setSelectedSubId(subId);
+    setManagerComment('');
+    if (onRecordView) {
+      onRecordView(subId, currentUser);
     }
   };
 
@@ -178,7 +190,7 @@ export default function ManagerReview({
                           </div>
                           <div className="flex justify-between items-center text-[10px] text-slate-400 mt-0.5">
                             <span>متقاضی: {s.staffName} ({s.unit})</span>
-                            <span className="font-mono text-[9px]">{s.managerApprovedAt || s.createdAt}</span>
+                            <span className="font-semibold text-slate-500 text-[10px]">{toPersianDate(s.managerApprovedAt || s.createdAt)}</span>
                           </div>
                           {s.managerComment && (
                             <p className="text-[9px] text-slate-500 line-clamp-1 italic bg-white px-1.5 py-0.5 rounded border border-slate-100 mt-0.5">💬 {s.managerComment}</p>
@@ -219,7 +231,7 @@ export default function ManagerReview({
             pendingSubmissions.map(sub => (
               <button
                 key={sub.id}
-                onClick={() => { setSelectedSubId(sub.id); setManagerComment(''); }}
+                onClick={() => handleSelectSub(sub.id)}
                 className={`w-full text-right bg-white border rounded-xl p-4 transition-all duration-200 flex flex-col gap-2 cursor-pointer ${
                   selectedSubId === sub.id
                     ? 'border-emerald-500 ring-2 ring-emerald-500/10 bg-emerald-50/10'
@@ -227,7 +239,7 @@ export default function ManagerReview({
                 }`}
               >
                 <div className="flex justify-between items-start w-full gap-2">
-                  <span className="text-[10px] font-mono text-slate-400">{sub.createdAt}</span>
+                  <span className="text-[10px] font-bold text-slate-500">{toPersianDate(sub.createdAt)}</span>
                   <span className="text-[9px] bg-emerald-50 text-emerald-800 font-semibold px-2 py-0.5 rounded border border-emerald-100">در انتظار امضای شما</span>
                 </div>
 
@@ -353,6 +365,9 @@ export default function ManagerReview({
                   </button>
                 </div>
               </form>
+
+              {/* Event Logs Trace Timeline */}
+              <SubmissionHistoryLog submission={selectedSub} />
             </div>
           </div>
         )}

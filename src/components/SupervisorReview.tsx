@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { User, FormSubmission, FormTemplate } from '../types';
 import { ClipboardList, ShieldAlert, CheckSquare, CornerDownRight, MessageSquareCode, Clock, FileCheck, CheckCircle2, RefreshCw } from 'lucide-react';
+import { toPersianDate } from '../utils/dateConverter';
+import SubmissionHistoryLog from './SubmissionHistoryLog';
 
 interface SupervisorReviewProps {
   currentUser: User;
   submissions: FormSubmission[];
   templates: FormTemplate[];
   onApproveBySupervisor: (id: string, comment: string, supervisorName: string) => void;
-  onRejectBySupervisor: (id: string) => void;
+  onRejectBySupervisor: (id: string, name: string) => void;
+  onRecordView?: (id: string, viewer: User) => void;
 }
 
 export default function SupervisorReview({
@@ -15,7 +18,8 @@ export default function SupervisorReview({
   submissions,
   templates,
   onApproveBySupervisor,
-  onRejectBySupervisor
+  onRejectBySupervisor,
+  onRecordView
 }: SupervisorReviewProps) {
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
@@ -45,10 +49,18 @@ export default function SupervisorReview({
   const handleReject = () => {
     if (!selectedSubId) return;
     if (confirm('آیا مایلید این فرم را جهت اصلاحات به کارشناس عودت دهید؟ فرم مجددا در بخش پیش‌نویس‌های ایشان قرار خواهد گرفت.')) {
-      onRejectBySupervisor(selectedSubId);
+      onRejectBySupervisor(selectedSubId, currentUser.name);
       setSelectedSubId(null);
       setCommentText('');
       alert('فرم با موفقیت جهت اصلاح به کارشناس مربوطه بازگردانده شد.');
+    }
+  };
+
+  const handleSelectSub = (subId: string) => {
+    setSelectedSubId(subId);
+    setCommentText('');
+    if (onRecordView) {
+      onRecordView(subId, currentUser);
     }
   };
 
@@ -77,7 +89,7 @@ export default function SupervisorReview({
             pendingSubmissions.map(sub => (
               <button
                 key={sub.id}
-                onClick={() => { setSelectedSubId(sub.id); setCommentText(''); }}
+                onClick={() => handleSelectSub(sub.id)}
                 className={`w-full text-right bg-white border rounded-xl p-4 transition-all duration-200 flex flex-col gap-2 cursor-pointer ${
                   selectedSubId === sub.id
                     ? 'border-amber-500 ring-2 ring-amber-500/10 bg-amber-50/10'
@@ -85,7 +97,7 @@ export default function SupervisorReview({
                 }`}
               >
                 <div className="flex justify-between items-start w-full gap-2">
-                  <span className="text-[10px] font-mono text-slate-400">{sub.createdAt}</span>
+                  <span className="text-[10px] font-bold text-slate-500">{toPersianDate(sub.createdAt)}</span>
                   <span className="text-[9px] bg-amber-50 text-amber-800 font-semibold px-2 py-0.5 rounded border border-amber-100">در انتظار تایید شما</span>
                 </div>
 
@@ -118,9 +130,9 @@ export default function SupervisorReview({
                 <span className="text-[9px] bg-amber-900 border border-amber-700 text-amber-200 px-2.5 py-0.5 rounded-full font-bold">مرحله ۲: بررسی و تایید سرپرست واحد کارگاه</span>
                 <h3 className="text-xs font-bold mt-1 text-slate-100">{selectedSub.templateTitle}</h3>
               </div>
-              <div className="text-left">
-                <p className="text-[10px] text-amber-200 font-semibold">ارسال از طرف: {selectedSub.staffName}</p>
-                <p className="text-[9px] text-amber-300 font-mono">تاریخ ثبت: {selectedSub.createdAt}</p>
+              <div className="text-left w-auto shrink-0 select-none">
+                <p className="text-[10px] text-amber-200 font-semibold mb-0.5">ارسال از طرف: {selectedSub.staffName}</p>
+                <p className="text-[10px] text-amber-100 font-medium">تاریخ ثبت: {toPersianDate(selectedSub.createdAt)}</p>
               </div>
             </div>
 
@@ -203,6 +215,9 @@ export default function SupervisorReview({
                   </button>
                 </div>
               </form>
+
+              {/* Event Logs Trace Timeline */}
+              <SubmissionHistoryLog submission={selectedSub} />
             </div>
           </div>
         )}
