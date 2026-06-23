@@ -10,7 +10,8 @@ import PresidentReview from './components/PresidentReview';
 import OrgChart from './components/OrgChart';
 import PhpSourceCodeGuide from './components/PhpSourceCodeGuide';
 import Login from './components/Login';
-import { LayoutDashboard, Award, Settings, CheckSquare, Shield, HelpCircle, Landmark, Sun, Moon, Network, LogOut } from 'lucide-react';
+import { LayoutDashboard, Award, Settings, CheckSquare, Shield, HelpCircle, Landmark, Sun, Moon, Network, LogOut, BarChart3, TrendingUp } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 export default function App() {
   // Initialize States from localStorage if exists, else defaults
@@ -158,6 +159,58 @@ export default function App() {
       localStorage.setItem('wf_dark_mode', 'false');
     }
   }, [darkMode]);
+
+  // Recharts Monthly Statistics Mapping
+  const getSubMonthIndex = (dateStr: string): number => {
+    if (!dateStr) return -1;
+    const parts = dateStr.split('-');
+    if (parts.length >= 2) {
+      const m = parseInt(parts[1], 10);
+      if (!isNaN(m) && m >= 1 && m <= 12) {
+        return m;
+      }
+    }
+    return -1;
+  };
+
+  const monthNamesPersian = [
+    { fa: 'فروردین / ژانویه' },
+    { fa: 'اردیبهشت / فوریه' },
+    { fa: 'خرداد / مارس' },
+    { fa: 'تیر / آوریل' },
+    { fa: 'مرداد / مِی' },
+    { fa: 'شهریور / ژوئن' },
+    { fa: 'مهر / ژوئیه' },
+    { fa: 'آبان / اوت' },
+    { fa: 'آذر / سپتامبر' },
+    { fa: 'دی / اکتبر' },
+    { fa: 'بهمن / نوامبر' },
+    { fa: 'اسفند / دسامبر' }
+  ];
+
+  const yearlyChartData = monthNamesPersian.map((mObj, index) => {
+    const monthNum = index + 1; // 1 to 12
+    
+    // Total registered: Created in this month (any status except drafts)
+    const registeredCount = submissions.filter(s => {
+      if (s.status === 'draft') return false;
+      const m = getSubMonthIndex(s.createdAt);
+      return m === monthNum;
+    }).length;
+
+    // Total approved: Created/Approved in this month and approved by president
+    const approvedCount = submissions.filter(s => {
+      if (s.status !== 'approved_by_president') return false;
+      const m = getSubMonthIndex(s.presidentApprovedAt || s.createdAt);
+      return m === monthNum;
+    }).length;
+
+    return {
+      name: mObj.fa,
+      'ثبت شده': registeredCount,
+      'تایید شده': approvedCount,
+    };
+  });
 
   // Actions handlers
   const handleAddUser = (newUser: User) => {
@@ -315,7 +368,7 @@ export default function App() {
     }));
   };
 
-  const handleApproveByManager = (id: string, comment: string, managerName: string, rating?: number) => {
+  const handleApproveByManager = (id: string, comment: string, managerName: string, rating?: number, signature?: string) => {
     setSubmissions(prev => prev.map(s => {
       if (s.id === id) {
         const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
@@ -326,7 +379,8 @@ export default function App() {
           action: 'approve' as const,
           actionLabel: 'بررسی صحت، تایید و امضاء دیجیتال توسط مدیر ارشد دپارتمان فنی',
           timestamp: nowStr,
-          comment: comment
+          comment: comment,
+          signature: signature || null
         };
         const currentLogs = s.logs || [];
         return {
@@ -335,6 +389,7 @@ export default function App() {
           managerComment: comment,
           managerName: managerName,
           managerApprovedAt: nowStr,
+          managerSignature: signature || null,
           rating: rating || s.rating,
           logs: [...currentLogs, approveLog]
         };
@@ -363,6 +418,7 @@ export default function App() {
           managerComment: null,
           managerApprovedAt: null,
           managerName: null,
+          managerSignature: null,
           supervisorComment: 'نیاز به شفاف سازی مجدد توسط مدیر دپارتمان عودت داده شد.',
           supervisorApprovedAt: null,
           rating: undefined,
@@ -373,7 +429,7 @@ export default function App() {
     }));
   };
 
-  const handleApproveByPresident = (id: string, comment: string, presidentName: string, rating?: number) => {
+  const handleApproveByPresident = (id: string, comment: string, presidentName: string, rating?: number, signature?: string) => {
     setSubmissions(prev => prev.map(s => {
       if (s.id === id) {
         const nowStr = new Date().toISOString().replace('T', ' ').slice(0, 16);
@@ -384,7 +440,8 @@ export default function App() {
           action: 'approve' as const,
           actionLabel: 'توشیح نهایی عالی، مهر دیجیتال و ابلاغ قطعی پورتال توسط رئیس شرکت',
           timestamp: nowStr,
-          comment: comment
+          comment: comment,
+          signature: signature || null
         };
         const currentLogs = s.logs || [];
         return {
@@ -393,6 +450,7 @@ export default function App() {
           presidentComment: comment,
           presidentName: presidentName,
           presidentApprovedAt: nowStr,
+          presidentSignature: signature || null,
           rating: rating || s.rating,
           logs: [...currentLogs, approveLog]
         };
@@ -576,6 +634,78 @@ export default function App() {
               </div>
             </div>
 
+            {/* Interactive Recharts Monthly Column Bar Chart card */}
+            <div id="recharts-monthly-dashboard-chart" className="bg-white border border-slate-200 rounded-xl p-5 shadow-xs space-y-4 print:hidden">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                    <BarChart3 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-slate-800">گزارش آماری ماهانه فرم‌های اداری کارگاه</h3>
+                    <p className="text-[10px] text-slate-400 mt-0.5">تفکیک تعداد کل فرم‌های ثبت شده کارشناسان در مقایسه با موارد تایید نهایی شده توسط ریاست</p>
+                  </div>
+                </div>
+                <span className="text-[10px] bg-slate-100 px-2 py-1 rounded font-bold text-slate-600 flex items-center gap-1">
+                  <TrendingUp className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>بروزرسانی زنده</span>
+                </span>
+              </div>
+
+              <div className="h-[250px] w-full text-xs font-semibold" dir="ltr">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={yearlyChartData}
+                    margin={{ top: 20, right: 10, left: -20, bottom: 5 }}
+                    barGap={4}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fill: '#64748b', fontSize: 8, fontWeight: 'bold' }} 
+                      axisLine={{ stroke: '#e2e8f0' }}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }} 
+                      axisLine={{ stroke: '#e2e8f0' }}
+                      tickLine={false}
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        direction: 'rtl',
+                        fontFamily: 'Inter, sans-serif',
+                        fontSize: '11px',
+                        borderRadius: '0.75rem',
+                        border: '1px solid #e2e8f0',
+                        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
+                        backgroundColor: '#ffffff'
+                      }}
+                      itemStyle={{ padding: '2px 0' }}
+                    />
+                    <Legend 
+                      verticalAlign="top" 
+                      height={36} 
+                      iconType="circle"
+                      iconSize={8}
+                    />
+                    <Bar 
+                      dataKey="ثبت شده" 
+                      fill="#4f46e5" 
+                      radius={[4, 4, 0, 0]} 
+                      maxBarSize={32}
+                    />
+                    <Bar 
+                      dataKey="تایید شده" 
+                      fill="#10b981" 
+                      radius={[4, 4, 0, 0]} 
+                      maxBarSize={32}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
             {/* Live Network & Traffic Stats */}
             <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 md:p-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-white shadow-xs print:hidden">
               <div className="flex items-center gap-2.5">
@@ -643,6 +773,8 @@ export default function App() {
                     submissions={submissions}
                     companyLogo={companyLogo}
                     onLogoChange={handleLogoChange}
+                    deadlines={deadlines}
+                    onUpdateDeadlines={setDeadlines}
                   />
                 )}
 
@@ -664,6 +796,7 @@ export default function App() {
                     onApproveBySupervisor={handleApproveBySupervisor}
                     onRejectBySupervisor={handleRejectBySupervisor}
                     onRecordView={handleRecordViewSubmission}
+                    deadlines={deadlines}
                   />
                 )}
 
@@ -675,6 +808,7 @@ export default function App() {
                     onApproveByManager={handleApproveByManager}
                     onRejectByManager={handleRejectByManager}
                     onRecordView={handleRecordViewSubmission}
+                    deadlines={deadlines}
                   />
                 )}
 
@@ -685,6 +819,7 @@ export default function App() {
                     templates={templates}
                     onApproveByPresident={handleApproveByPresident}
                     onRecordView={handleRecordViewSubmission}
+                    deadlines={deadlines}
                   />
                 )}
               </div>

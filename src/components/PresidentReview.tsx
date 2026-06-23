@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { User, FormSubmission, FormTemplate } from '../types';
-import { Crown, CheckSquare, MessageSquare, Printer, Award, FileCheck, CheckCircle2, FileText, ChevronLeft } from 'lucide-react';
-import { toPersianDate } from '../utils/dateConverter';
+import { User, FormSubmission, FormTemplate, WorkflowDeadlines } from '../types';
+import { Crown, CheckSquare, MessageSquare, Printer, Award, FileCheck, CheckCircle2, FileText, ChevronLeft, Clock, AlertCircle } from 'lucide-react';
+import { toPersianDate, getOverdueInfo } from '../utils/dateConverter';
 import SubmissionHistoryLog from './SubmissionHistoryLog';
+import SignatureCanvas from './SignatureCanvas';
 
 interface PresidentReviewProps {
   currentUser: User;
   submissions: FormSubmission[];
   templates: FormTemplate[];
-  onApproveByPresident: (id: string, comment: string, presidentName: string) => void;
+  onApproveByPresident: (id: string, comment: string, presidentName: string, rating?: number, signature?: string) => void;
   onRecordView?: (id: string, viewer: User) => void;
+  deadlines: WorkflowDeadlines;
 }
 
 export default function PresidentReview({
@@ -17,10 +19,12 @@ export default function PresidentReview({
   submissions,
   templates,
   onApproveByPresident,
-  onRecordView
+  onRecordView,
+  deadlines
 }: PresidentReviewProps) {
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
   const [presidentComment, setPresidentComment] = useState('');
+  const [signature, setSignature] = useState<string | null>(null);
   const [showPrintView, setShowPrintView] = useState(false);
 
   // Filter submissions waiting for president (CEO) review (sent_to_president status)
@@ -39,9 +43,15 @@ export default function PresidentReview({
       alert('لطفاً نظر نهایی و امضای ریاست محترم را بنویسید.');
       return;
     }
+    if (!signature) {
+      alert('لطفاً امضای دیجیتال دستی خود را روی بوم (Canvas) ترسیم نمایید.');
+      return;
+    }
 
-    onApproveByPresident(selectedSubId, presidentComment, currentUser.name);
+    onApproveByPresident(selectedSubId, presidentComment, currentUser.name, undefined, signature);
     setPresidentComment('');
+    setSignature(null);
+    setSelectedSubId(null);
     alert('فرم با موفقیت امضا، تایید نهایی و در پورتال اصلی شرکت بایگانی گردید!');
   };
 
@@ -52,6 +62,7 @@ export default function PresidentReview({
   const handleSelectSub = (subId: string, isPrint: boolean) => {
     setSelectedSubId(subId);
     setShowPrintView(isPrint);
+    setSignature(null);
     if (!isPrint) {
       setPresidentComment('');
     }
@@ -78,24 +89,44 @@ export default function PresidentReview({
                 <p className="text-[9px] text-slate-400 mt-1">کلیه پیگیری‌ها و فرم‌ها بررسی و نهایی شده‌اند.</p>
               </div>
             ) : (
-              pendingSubmissions.map(sub => (
-                <button
-                  key={sub.id}
-                  onClick={() => handleSelectSub(sub.id, false)}
-                  className={`w-full text-right bg-white border rounded-xl p-3.5 transition-all flex flex-col gap-1.5 cursor-pointer ${
-                    selectedSubId === sub.id && !showPrintView
-                      ? 'border-amber-600 ring-2 ring-amber-500/10 bg-amber-50/10'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex justify-between items-center w-full">
-                    <span className="text-[10px] font-bold text-slate-500">{toPersianDate(sub.createdAt)}</span>
-                    <span className="text-[9px] bg-rose-50 border border-rose-200 text-rose-700 font-bold px-1.5 py-0.5 rounded">نامه‌ ارجاعی فوری</span>
-                  </div>
-                  <h4 className="text-xs font-bold text-slate-800 line-clamp-1">{sub.templateTitle}</h4>
-                  <p className="text-[10px] text-slate-500">متقاضی: {sub.staffName} ({sub.unit})</p>
-                </button>
-              ))
+              pendingSubmissions.map(sub => {
+                const overdueInfo = getOverdueInfo(sub, 'president', deadlines);
+                const showOverdueAlert = overdueInfo.isOverdue;
+
+                return (
+                  <button
+                    key={sub.id}
+                    onClick={() => handleSelectSub(sub.id, false)}
+                    className={`w-full text-right bg-white border rounded-xl p-3.5 transition-all flex flex-col gap-1.5 cursor-pointer ${
+                      selectedSubId === sub.id && !showPrintView
+                        ? 'border-amber-600 ring-2 ring-amber-500/10 bg-amber-50/10'
+                        : showOverdueAlert
+                        ? 'border-rose-300 bg-rose-50/40 hover:bg-rose-50 hover:border-rose-400'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center w-full">
+                      <span className="text-[10px] font-bold text-slate-500">{toPersianDate(sub.createdAt)}</span>
+                      {showOverdueAlert ? (
+                        <span className="text-[8px] bg-rose-105 dark:bg-rose-950 text-rose-800 dark:text-rose-300 font-extrabold px-1.5 py-0.5 rounded border border-rose-220 dark:border-rose-900/40 flex items-center gap-1 animate-pulse">
+                          <AlertCircle className="w-2.5 h-2.5 text-rose-600 dark:text-rose-400" />
+                          <span>خارج از مهلت بررسی</span>
+                        </span>
+                      ) : (
+                        <span className="text-[9px] bg-rose-50 border border-rose-200 text-rose-700 font-bold px-1.5 py-0.5 rounded">نامه‌ ارجاعی فوری</span>
+                      )}
+                    </div>
+                    <h4 className="text-xs font-bold text-slate-800 line-clamp-1">{sub.templateTitle}</h4>
+                    
+                    <div className="flex justify-between items-center text-[10px] text-slate-500 mt-1 pt-1 border-t border-slate-100/50">
+                      <span>متقاضی: {sub.staffName} ({sub.unit})</span>
+                      <span className={`text-[9.5px] font-semibold ${showOverdueAlert ? 'text-rose-605 font-bold animate-pulse' : 'text-slate-400'}`}>
+                        {overdueInfo.text}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
             )}
           </div>
         </div>
@@ -155,6 +186,31 @@ export default function PresidentReview({
                 <Printer className="w-4 h-4" /> چاپ نامه / ذخیره به عنوان خروجی PDF
               </button>
             </div>
+
+            {/* SLA Warning Banner inside digital preview */}
+            {(() => {
+              const overdueInfo = getOverdueInfo(selectedSub, 'president', deadlines);
+              const isPending = selectedSub.status === 'sent_to_president';
+              if (!isPending) return null;
+              return (
+                <div className={`p-3.5 rounded-xl border flex items-center justify-between text-xs font-sans ${
+                  overdueInfo.isOverdue
+                    ? 'bg-rose-50 border-rose-200 text-rose-800 dark:bg-rose-955/20 dark:border-rose-900 dark:text-rose-300'
+                    : 'bg-emerald-50/50 border-emerald-100 text-emerald-800 dark:bg-emerald-955/20 dark:border-emerald-900/40 dark:text-emerald-300'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <Clock className={`w-4 h-4 ${overdueInfo.isOverdue ? 'text-rose-500 animate-pulse' : 'text-emerald-500'}`} />
+                    <div>
+                      <span className="font-bold">وضعیت مهلت بررسی پورتال (SLA):</span>{' '}
+                      <span className="font-semibold">{overdueInfo.text}</span>
+                    </div>
+                  </div>
+                  {selectedSub.managerApprovedAt && (
+                    <span className="text-[10px] bg-white/70 dark:bg-slate-900/60 px-2 py-0.5 rounded font-mono">تایید مدیریت کل: {selectedSub.managerApprovedAt}</span>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Simulated letter sheet */}
             <div id="printable-letterhead" className="bg-white border border-slate-300 rounded-xl p-8 shadow-sm print:shadow-none print:border-none print:p-0 max-w-[21cm] mx-auto text-slate-900 leading-normal font-sans">
@@ -257,9 +313,21 @@ export default function PresidentReview({
                         💬 « {selectedSub.managerComment} »
                       </p>
                     </div>
-                    <div className="md:col-span-4 text-left md:border-r md:border-slate-300 pr-2">
-                      <p className="font-bold text-slate-800">{selectedSub.managerName}</p>
-                      <p className="text-[10px] text-slate-500 font-sans">تاریخ امضا: {toPersianDate(selectedSub.managerApprovedAt)}</p>
+                    <div className="md:col-span-4 text-left md:border-r md:border-slate-300 pr-2 flex flex-col justify-between">
+                      <div>
+                        <p className="font-bold text-slate-800">{selectedSub.managerName}</p>
+                        <p className="text-[10px] text-slate-500 font-sans">تاریخ امضا: {toPersianDate(selectedSub.managerApprovedAt)}</p>
+                      </div>
+                      {selectedSub.managerSignature && (
+                        <div className="mt-2 text-right">
+                          <img 
+                            src={selectedSub.managerSignature} 
+                            alt="امضای مدیر دپارتمان" 
+                            className="h-9 object-contain block mix-blend-multiply md:mr-auto"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -273,10 +341,22 @@ export default function PresidentReview({
                         💬 « {selectedSub.presidentComment} »
                       </p>
                     </div>
-                    <div className="md:col-span-4 text-left md:border-r md:border-amber-300 pr-3">
-                      <p className="font-bold text-amber-950 text-base font-serif">{selectedSub.presidentName}</p>
-                      <p className="text-[10px] text-amber-900 font-sans">تاریخ توشیح: {toPersianDate(selectedSub.presidentApprovedAt)}</p>
-                      <div className="mt-3 inline-block border-2 border-emerald-600 text-emerald-700 px-3 py-1 text-[11px] rounded bg-emerald-100/50 font-bold uppercase rotate-[-3deg]">
+                    <div className="md:col-span-4 text-left md:border-r md:border-amber-300 pr-3 flex flex-col justify-between">
+                      <div>
+                        <p className="font-bold text-amber-950 text-base font-serif">{selectedSub.presidentName}</p>
+                        <p className="text-[10px] text-amber-900 font-sans">تاریخ توشیح: {toPersianDate(selectedSub.presidentApprovedAt)}</p>
+                      </div>
+                      {selectedSub.presidentSignature && (
+                        <div className="mt-2 text-right">
+                          <img 
+                            src={selectedSub.presidentSignature} 
+                            alt="امضای رئیس شرکت" 
+                            className="h-10 object-contain block mix-blend-multiply md:mr-auto"
+                            referrerPolicy="no-referrer"
+                          />
+                        </div>
+                      )}
+                      <div className="mt-3 inline-block border-2 border-emerald-600 text-emerald-700 px-3 py-1 text-[11px] rounded bg-emerald-100/50 font-bold uppercase rotate-[-3deg] text-center">
                         مهر و امضا ابلاغ شد
                       </div>
                     </div>
@@ -354,8 +434,9 @@ export default function PresidentReview({
               {/* Action comment box */}
               <form onSubmit={handleApprove} className="space-y-3 pt-4 border-t border-slate-100">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                    ✍ دستور و توشیحات نهایی عالی ریاست جهت بایگانی و ابلاغ:
+                  <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                    <span>✍ دستور و توشیحات نهایی عالی ریاست جهت بایگانی و ابلاغ:</span>
+                    <span className="text-[10px] text-amber-600 font-semibold">* امضا و ابلاغ قطعی</span>
                   </label>
                   <textarea
                     rows={4}
@@ -367,14 +448,25 @@ export default function PresidentReview({
                   />
                 </div>
 
+                {/* Digital hand-drawn signature canvas */}
+                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2">
+                  <label className="block text-xs font-bold text-slate-800">
+                    🖋️ ترسیم دستخط امضای دیجیتال عالی ریاست کل سازمانی:
+                  </label>
+                  <SignatureCanvas 
+                    onSave={setSignature} 
+                    placeholder="امضای عالی خود را با استفاده از موس یا لمس صفحه در کادر مستطیل ترسم بفرمایید..." 
+                  />
+                </div>
+
                 {/* Action steps */}
                 <div className="pt-2 text-left">
                   <button
                     type="submit"
-                    className="bg-amber-600 hover:bg-amber-700 text-white rounded-lg px-6 py-2.5 text-xs font-bold transition-all shadow-md flex items-center gap-1.5 inline-block"
+                    className="bg-amber-600 hover:bg-amber-700 text-white rounded-lg px-6 py-2.5 text-xs font-bold transition-all shadow-md flex items-center gap-1.5 inline-block cursor-pointer"
                   >
                     <FileCheck className="w-4 h-4" />
-                    امضاء و ابلاغ نهایی سند اداری
+                    امضاء، مهر دیجیتال و ابلاغ نهایی سند اداری
                   </button>
                 </div>
               </form>

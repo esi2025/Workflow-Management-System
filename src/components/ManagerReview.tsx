@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { User, FormSubmission, FormTemplate } from '../types';
-import { Newspaper, MessageSquare, Award, ArrowLeftRight, CheckCircle, HelpCircle, FileCheck, ThumbsDown, BarChart3, TrendingUp, RefreshCw, ChevronDown, ChevronUp, Clock, List } from 'lucide-react';
-import { toPersianDate } from '../utils/dateConverter';
+import { User, FormSubmission, FormTemplate, WorkflowDeadlines } from '../types';
+import { Newspaper, MessageSquare, Award, ArrowLeftRight, CheckCircle, HelpCircle, FileCheck, ThumbsDown, BarChart3, TrendingUp, RefreshCw, ChevronDown, ChevronUp, Clock, List, AlertCircle, Filter } from 'lucide-react';
+import { toPersianDate, getOverdueInfo } from '../utils/dateConverter';
 import SubmissionHistoryLog from './SubmissionHistoryLog';
+import SignatureCanvas from './SignatureCanvas';
 
 interface ManagerReviewProps {
   currentUser: User;
   submissions: FormSubmission[];
   templates: FormTemplate[];
-  onApproveByManager: (id: string, comment: string, managerName: string) => void;
+  onApproveByManager: (id: string, comment: string, managerName: string, rating?: number, signature?: string) => void;
   onRejectByManager: (id: string, name: string) => void;
   onRecordView?: (id: string, viewer: User) => void;
+  deadlines: WorkflowDeadlines;
 }
 
 export default function ManagerReview({
@@ -19,12 +21,35 @@ export default function ManagerReview({
   templates,
   onApproveByManager,
   onRejectByManager,
-  onRecordView
+  onRecordView,
+  deadlines
 }: ManagerReviewProps) {
   const [selectedSubId, setSelectedSubId] = useState<string | null>(null);
   const [managerComment, setManagerComment] = useState('');
+  const [signature, setSignature] = useState<string | null>(null);
   const [isStatsCollapsed, setIsStatsCollapsed] = useState(false);
   const [statsViewTab, setStatsViewTab] = useState<'chart' | 'recent'>('chart');
+
+  // Filtering states
+  const [unitFilter, setUnitFilter] = useState<string>(currentUser.unit === 'عمومی' ? 'all' : currentUser.unit);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved'>('pending');
+
+  const uniqueUnits = Array.from(new Set(submissions.map(s => s.unit).filter(Boolean)));
+
+  // Filter submissions dynamically matching emitting dept & workflow status
+  const filteredSubmissions = submissions.filter(s => {
+    // Hide drafts and forms waiting on supervisor (not ready for manager)
+    if (s.status === 'draft' || s.status === 'sent_to_supervisor') return false;
+
+    // Filter by Emitting Unit/Department
+    if (unitFilter !== 'all' && s.unit !== unitFilter) return false;
+
+    // Filter by Status: pending manager review vs approved/forwarded
+    if (statusFilter === 'pending' && s.status !== 'sent_to_manager') return false;
+    if (statusFilter === 'approved' && s.status === 'sent_to_manager') return false;
+
+    return true;
+  });
 
   // Filter submissions waiting for department manager review
   const pendingSubmissions = submissions.filter(
@@ -66,10 +91,15 @@ export default function ManagerReview({
       alert('لطفاً نظر مدیریتی یا دستورات اجرایی خود را وارد کنید.');
       return;
     }
+    if (!signature) {
+      alert('لطفاً امضای دیجیتال دستی خود را روی بوم (Canvas) ترسیم نمایید.');
+      return;
+    }
 
-    onApproveByManager(selectedSubId, managerComment, currentUser.name);
+    onApproveByManager(selectedSubId, managerComment, currentUser.name, undefined, signature);
     setSelectedSubId(null);
     setManagerComment('');
+    setSignature(null);
     alert('فرم با موفقیت تأیید شد و جهت دستور نهایی به کارتابل رئیس شرکت ارجاع داده شد.');
   };
 
@@ -79,6 +109,7 @@ export default function ManagerReview({
       onRejectByManager(selectedSubId, currentUser.name);
       setSelectedSubId(null);
       setManagerComment('');
+      setSignature(null);
       alert('فرم با موفقیت جهت شفاف‌سازی بیشتر به کارتابل سرپرست عودت داده شد.');
     }
   };
@@ -86,6 +117,7 @@ export default function ManagerReview({
   const handleSelectSub = (subId: string) => {
     setSelectedSubId(subId);
     setManagerComment('');
+    setSignature(null);
     if (onRecordView) {
       onRecordView(subId, currentUser);
     }
@@ -210,46 +242,119 @@ export default function ManagerReview({
           )}
         </div>
 
+        {/* Filters Panel */}
+        <div className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-xs font-extrabold text-slate-800 dark:text-slate-300">
+              <Filter className="w-4 h-4 text-slate-500 animate-none" />
+              <span>فیلترهای گزارش‌ها</span>
+            </span>
+            <span className="text-[10px] text-slate-400">واحد شما: {currentUser.unit}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div>
+              <label className="text-[9px] text-slate-500 block mb-0.5">دپارتمان</label>
+              <select
+                value={unitFilter}
+                onChange={(e) => setUnitFilter(e.target.value)}
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 font-bold"
+              >
+                <option value="all">همه دپارتمان‌ها</option>
+                {uniqueUnits.map(unit => (
+                  <option key={unit} value={unit}>{unit}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-[9px] text-slate-500 block mb-0.5">وضعیت گردش کار</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as any)}
+                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-1.5 font-bold"
+              >
+                <option value="all">همه فرم‌ها</option>
+                <option value="pending">در انتظار مدیر</option>
+                <option value="approved">تأیید شدگان / مراحل بعدی</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <h3 className="text-xs font-bold text-slate-800 flex items-center justify-between gap-1 leading-none pt-2">
           <span className="flex items-center gap-1.5">
             <Newspaper className="w-4 h-4 text-emerald-500" />
-            کارتابل تائید مدیران دپارتمان ({pendingSubmissions.length})
+            کارتابل تائید مدیران دپارتمان ({filteredSubmissions.length})
           </span>
-          <span className="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded border border-emerald-200">دپارتمان: {currentUser.unit}</span>
         </h3>
 
         <div className="space-y-3">
-          {pendingSubmissions.length === 0 ? (
+          {filteredSubmissions.length === 0 ? (
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-8 text-center text-slate-500">
-              <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-2 animate-pulse" />
-              <p className="text-xs font-semibold text-slate-700">کارپوشه کاملا خالی است!</p>
+              <CheckCircle className="w-10 h-10 text-emerald-400 mx-auto mb-2 animate-none" />
+              <p className="text-xs font-semibold text-slate-705">کارپوشه کاملا خالی است!</p>
               <p className="text-[10px] text-slate-400 mt-1 leading-relaxed">
-                تمام موارد ارجاعی از سرپرستان واحدهای زیرمجموعه در دپارتمان شما با موفقیت تایید و جهت امضای مدیریت نهایی به هیئت مدیره ارسال شده‌اند.
+                هیچ فرمی با فیلترهای کنونی در کارتابل مدیر مطابقت ندارد.
               </p>
             </div>
           ) : (
-            pendingSubmissions.map(sub => (
-              <button
-                key={sub.id}
-                onClick={() => handleSelectSub(sub.id)}
-                className={`w-full text-right bg-white border rounded-xl p-4 transition-all duration-200 flex flex-col gap-2 cursor-pointer ${
-                  selectedSubId === sub.id
-                    ? 'border-emerald-500 ring-2 ring-emerald-500/10 bg-emerald-50/10'
-                    : 'border-slate-200 hover:border-slate-300'
-                }`}
-              >
-                <div className="flex justify-between items-start w-full gap-2">
-                  <span className="text-[10px] font-bold text-slate-500">{toPersianDate(sub.createdAt)}</span>
-                  <span className="text-[9px] bg-emerald-50 text-emerald-800 font-semibold px-2 py-0.5 rounded border border-emerald-100">در انتظار امضای شما</span>
-                </div>
+            filteredSubmissions.map(sub => {
+              const overdueInfo = getOverdueInfo(sub, 'manager', deadlines);
+              const isPending = sub.status === 'sent_to_manager';
+              const showOverdueAlert = isPending && overdueInfo.isOverdue;
 
-                <h4 className="text-xs font-bold text-slate-800 mb-0.5 line-clamp-1">{sub.templateTitle}</h4>
-                <div className="text-[10px] text-slate-500 space-y-0.5">
-                  <p>کارشناس دپارتمان: <span className="text-slate-700 font-medium">{sub.staffName}</span></p>
-                  <p className="text-slate-400">تأییدیه اولیه: <span className="text-indigo-600 font-medium">{sub.supervisorName}</span></p>
-                </div>
-              </button>
-            ))
+              return (
+                <button
+                  key={sub.id}
+                  onClick={() => handleSelectSub(sub.id)}
+                  className={`w-full text-right bg-white border rounded-xl p-4 transition-all duration-200 flex flex-col gap-2 cursor-pointer ${
+                    selectedSubId === sub.id
+                      ? showOverdueAlert
+                        ? 'border-rose-500 ring-2 ring-rose-505/20 bg-rose-50/10'
+                        : 'border-emerald-500 ring-2 ring-emerald-500/10 bg-emerald-50/10'
+                      : showOverdueAlert
+                      ? 'border-rose-300 bg-rose-50/40 hover:bg-rose-50 hover:border-rose-455'
+                      : 'border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex justify-between items-center w-full gap-2">
+                    <span className="text-[10px] font-mono font-bold text-slate-500">{toPersianDate(sub.createdAt)}</span>
+                    {isPending ? (
+                      showOverdueAlert ? (
+                        <span className="text-[8px] bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300 font-extrabold px-1.5 py-0.5 rounded border border-rose-200 dark:border-rose-800/40 flex items-center gap-1 animate-pulse">
+                          <AlertCircle className="w-2.5 h-2.5 text-rose-600 dark:text-rose-400" />
+                          <span>خارج از مهلت بررسی</span>
+                        </span>
+                      ) : (
+                        <span className="text-[8px] bg-emerald-50 text-emerald-800 font-bold px-1.5 py-0.5 rounded border border-emerald-100 flex items-center gap-1">
+                          <Clock className="w-2.5 h-2.5 text-emerald-500 animate-none" />
+                          <span>در انتظار تایید شما</span>
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-[8px] bg-indigo-50 text-indigo-800 font-bold px-1.5 py-0.5 rounded border border-indigo-100 flex items-center gap-1 select-none">
+                        <FileCheck className="w-2.5 h-2.5 text-indigo-500" />
+                        <span>منظور شد (ارسال به رئیس)</span>
+                      </span>
+                    )}
+                  </div>
+
+                  <h4 className="text-xs font-bold text-slate-800 mb-0.5 line-clamp-1">{sub.templateTitle}</h4>
+                  
+                  <div className="text-[10px] text-slate-505 space-y-0.5 mt-1 pt-1.5 border-t border-slate-100/60 flex flex-wrap justify-between items-center gap-2">
+                    <div>
+                      <p>کارشناس دپارتمان: <span className="text-slate-700 font-medium">{sub.staffName} ({sub.unit})</span></p>
+                      <p className="text-slate-400">تأییدیه اولیه: <span className="text-indigo-600 font-medium">{sub.supervisorName}</span></p>
+                    </div>
+
+                    {isPending && (
+                      <div className={`text-[9.5px] font-semibold ${showOverdueAlert ? 'text-rose-600 font-bold animate-pulse' : 'text-slate-550'}`}>
+                        {overdueInfo.text}
+                      </div>
+                    )}
+                  </div>
+                </button>
+              );
+            })
           )}
         </div>
       </div>
@@ -279,6 +384,31 @@ export default function ManagerReview({
             </div>
 
             <div className="p-6 space-y-5">
+              {/* SLA Warning Banner inside detail view */}
+              {(() => {
+                const overdueInfo = getOverdueInfo(selectedSub, 'manager', deadlines);
+                const isPending = selectedSub.status === 'sent_to_manager';
+                if (!isPending) return null;
+                return (
+                  <div className={`p-3.5 rounded-xl border flex items-center justify-between text-xs font-sans ${
+                    overdueInfo.isOverdue
+                      ? 'bg-rose-50 border-rose-200 text-rose-800 dark:bg-rose-955/20 dark:border-rose-900 dark:text-rose-300'
+                      : 'bg-emerald-50/50 border-emerald-100 text-emerald-800 dark:bg-emerald-955/20 dark:border-emerald-900/40 dark:text-emerald-300'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <Clock className={`w-4 h-4 ${overdueInfo.isOverdue ? 'text-rose-500 animate-pulse' : 'text-emerald-500'}`} />
+                      <div>
+                        <span className="font-bold">وضعیت مهلت بررسی پورتال (SLA):</span>{' '}
+                        <span className="font-semibold">{overdueInfo.text}</span>
+                      </div>
+                    </div>
+                    {selectedSub.supervisorApprovedAt && (
+                      <span className="text-[10px] bg-white/70 dark:bg-slate-900/60 px-2 py-0.5 rounded font-mono">تایید سرپرستی: {selectedSub.supervisorApprovedAt}</span>
+                    )}
+                  </div>
+                );
+              })()}
+
               {/* Form entries list */}
               <div className="space-y-4">
                 <h4 className="text-xs font-bold text-slate-800 pb-2 border-b border-slate-100 flex items-center gap-1">
@@ -330,41 +460,77 @@ export default function ManagerReview({
               </div>
 
               {/* Action comment box */}
-              <form onSubmit={handleApprove} className="space-y-3 pt-3 border-t border-slate-100">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-                    <span>✍ صدور دستورات مدیریتی و تایید برای رئیس شرکت:</span>
-                    <span className="text-[10px] text-emerald-600 font-semibold">* ارسال به بالا</span>
-                  </label>
-                  <textarea
-                    rows={4}
-                    value={managerComment}
-                    onChange={(e) => setManagerComment(e.target.value)}
-                    placeholder="تحلیل مدیریتی، تخصیص بودجه یا توصیه‌های نهایی خود را برای امضای رئیس مکتوب فرمایید..."
-                    className="w-full bg-slate-50 focus:bg-white border border-slate-200 rounded-lg p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-slate-400"
-                    required
-                  />
-                </div>
+              {selectedSub.status === 'sent_to_manager' ? (
+                <form onSubmit={handleApprove} className="space-y-3 pt-3 border-t border-slate-100 animate-fadeIn">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                      <span>✍ صدور دستورات مدیریتی و تایید برای رئیس شرکت:</span>
+                      <span className="text-[10px] text-emerald-600 font-semibold">* ارسال به بالا</span>
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={managerComment}
+                      onChange={(e) => setManagerComment(e.target.value)}
+                      placeholder="تحلیل مدیریتی، تخصیص بودجه یا توصیه‌های نهایی خود را برای امضای رئیس مکتوب فرمایید..."
+                      className="w-full bg-slate-50 focus:bg-white border border-slate-200 rounded-lg p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-slate-400"
+                      required
+                    />
+                  </div>
 
-                {/* Submit actions buttons */}
-                <div className="flex items-center justify-between gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={handleReject}
-                    className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg px-4 py-2 text-xs font-bold transition-colors"
-                  >
-                    ارجاع به سرپرست جهت رفع ابهام
-                  </button>
+                  {/* Manual signature drawing canvas */}
+                  <div className="bg-slate-50 border border-slate-150 p-4 rounded-xl space-y-2">
+                    <label className="block text-xs font-bold text-slate-800">
+                      🖋️ ترسیم امضای دیجیتال دستی جهت الصاق به سند اداری:
+                    </label>
+                    <SignatureCanvas 
+                      onSave={setSignature} 
+                      placeholder="امضای خود را با استفاده از موس یا لمس صفحه در فضای زیر ترسیم کنید..." 
+                    />
+                  </div>
 
-                  <button
-                    type="submit"
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-5 py-2 text-xs font-bold transition-all shadow flex items-center gap-1.5"
-                  >
-                    <FileCheck className="w-4 h-4" />
-                    تائید و ارسال فرادستگاهی به رئیس کل
-                  </button>
+                  {/* Submit actions buttons */}
+                  <div className="flex items-center justify-between gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleReject}
+                      className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 rounded-lg px-4 py-2 text-xs font-bold transition-colors cursor-pointer"
+                    >
+                      ارجاع به سرپرست جهت رفع ابهام
+                    </button>
+
+                    <button
+                      type="submit"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg px-5 py-2 text-xs font-bold transition-all shadow flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <FileCheck className="w-4 h-4" />
+                      تائید و ارسال فرادستگاهی به رئیس کل
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800">
+                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                    <span>دستور مدیریتی الصاق شده به پورتال:</span>
+                  </div>
+                  <p className="text-xs text-slate-700 italic bg-white p-3 border border-slate-100 rounded-lg">
+                    {selectedSub.managerComment || 'بدون یادداشت'}
+                  </p>
+                  {selectedSub.managerSignature && (
+                    <div className="mt-2 flex items-center gap-3">
+                      <span className="text-[11px] font-bold text-slate-500">امضای دیجیتال مدیر دپارتمان:</span>
+                      <div className="bg-white border border-slate-200 rounded-lg p-1 px-2.5 inline-block shadow-2xs">
+                        <img 
+                          src={selectedSub.managerSignature} 
+                          alt="امضای مدیر" 
+                          className="h-10 object-contain block mix-blend-multiply"
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </form>
+              )}
 
               {/* Event Logs Trace Timeline */}
               <SubmissionHistoryLog submission={selectedSub} />

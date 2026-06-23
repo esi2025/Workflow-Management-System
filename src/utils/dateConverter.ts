@@ -1,3 +1,5 @@
+import { FormSubmission, WorkflowDeadlines } from '../types';
+
 /**
  * converts Gregorian date strings (e.g., "2026-06-13" or ISO strings)
  * into a beautiful Iranian/Shamsi (Solar Hijri) formatted date with month names in Persian.
@@ -98,5 +100,71 @@ export function toPersianDate(dateInput: string | Date | undefined | null): stri
 export function usePersianDate() {
   return {
     formatDate: toPersianDate
+  };
+}
+
+export function getOverdueInfo(
+  sub: FormSubmission,
+  stage: 'supervisor' | 'manager' | 'president',
+  deadlines: WorkflowDeadlines
+) {
+  const deadlineConfig = deadlines[stage];
+  if (!deadlineConfig) return { isOverdue: false, text: '', delayText: '' };
+
+  let startTimeStr = sub.createdAt;
+  if (stage === 'manager' && sub.supervisorApprovedAt) {
+    startTimeStr = sub.supervisorApprovedAt;
+  } else if (stage === 'president' && sub.managerApprovedAt) {
+    startTimeStr = sub.managerApprovedAt;
+  }
+
+  if (!startTimeStr) return { isOverdue: false, text: '', delayText: '' };
+
+  // Convert "YYYY-MM-DD HH:MM" to parsed Date. Replace '-' with '/' for compatibility.
+  const formattedStr = startTimeStr.replace(/-/g, '/');
+  const startTime = new Date(formattedStr).getTime();
+  const now = new Date().getTime();
+
+  if (isNaN(startTime)) {
+    return { isOverdue: false, text: '', delayText: '' };
+  }
+
+  let durationMs = 0;
+  if (deadlineConfig.unit === 'm') {
+    durationMs = deadlineConfig.value * 60 * 1000;
+  } else if (deadlineConfig.unit === 'h') {
+    durationMs = deadlineConfig.value * 60 * 60 * 1000;
+  } else if (deadlineConfig.unit === 'd') {
+    durationMs = deadlineConfig.value * 24 * 60 * 60 * 1000;
+  }
+
+  const limitTime = startTime + durationMs;
+  const isOverdue = now > limitTime;
+  const diffMs = Math.abs(now - limitTime);
+
+  // Convert diffMs into format
+  const totalMinutes = Math.floor(diffMs / (60 * 1000));
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = totalMinutes % 60;
+
+  let delayText = '';
+  if (days > 0) delayText += `${days} روز و `;
+  if (hours > 0 || days > 0) delayText += `${hours} ساعت و `;
+  delayText += `${minutes} دقیقه`;
+
+  let text = '';
+  if (isOverdue) {
+    text = `خارج از مهلت به مدت ${delayText}`;
+  } else {
+    text = `فرصت باقی‌مانده: ${delayText}`;
+  }
+
+  return {
+    isOverdue,
+    text,
+    delayText,
+    remainingMs: limitTime - now,
+    startTimeStr
   };
 }

@@ -47,10 +47,12 @@ export interface FormSubmission {
   managerComment: string | null;
   managerApprovedAt: string | null;
   managerName: string | null;
+  managerSignature?: string | null;
   
   presidentComment: string | null;
   presidentApprovedAt: string | null;
   presidentName: string | null;
+  presidentSignature?: string | null;
   
   status: 'draft' | 'sent_to_supervisor' | 'sent_to_manager' | 'sent_to_president' | 'approved_by_president';
   startTime?: string;
@@ -64,6 +66,7 @@ export interface FormSubmission {
     actionLabel: string;
     timestamp: string; // ISO string or Gregorian date
     comment?: string | null;
+    signature?: string | null;
   }[];
 }
 

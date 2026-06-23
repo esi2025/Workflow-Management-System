@@ -1223,6 +1223,193 @@ export default function AdminPanel({
             </div>
           </div>
         )}
+
+        {/* Workflow SLAs / Deadlines Tab */}
+        {activeTab === 'workflow-slas' && (
+          <div className="space-y-6">
+            <div className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4 animate-fadeIn">
+              <div>
+                <h3 className="text-xs font-bold text-slate-830 dark:text-slate-200 flex items-center gap-1.5 font-sans leading-none">
+                  <Clock className="w-5 h-5 text-indigo-550" />
+                  <span>سامانه مدیریت مهلت‌های زمانی و توافق سطح خدمت (SLA)</span>
+                </h3>
+                <p className="text-xs text-slate-505 dark:text-slate-400 mt-1">
+                  در این بخش مهلت مجاز برای هر مرحله از گردش کار را تعیین نمایید. در صورت عبور زمان توقف فرم در کارتابل هر نقش از مهلت تعیین شده، سیستم با آیکون هشدار و وضعیت برجسته به مراجع بررسی‌کننده اطلاع خواهد داد.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                {/* Supervisor SLA Card */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4 shadow-xs">
+                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-805">
+                    <div className="p-2 bg-amber-50 dark:bg-amber-950/30 rounded-lg text-amber-500">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-extrabold text-slate-800 dark:text-slate-200">مهلت بررسی سرپرست</h4>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-400">مرحله اول ارجاع</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <label className="text-[10px] text-slate-500 dark:text-slate-400 block mb-1">مقدار</label>
+                        <input
+                          type="number"
+                          id="supervisor-deadline-val"
+                          min="1"
+                          value={deadlines.supervisor.value}
+                          onChange={(e) => {
+                            const val = Math.max(1, parseInt(e.target.value) || 1);
+                            onUpdateDeadlines({
+                              ...deadlines,
+                              supervisor: { ...deadlines.supervisor, value: val }
+                            });
+                          }}
+                          className="w-full text-xs font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white"
+                        />
+                      </div>
+                      <div className="w-28">
+                        <label className="text-[10px] text-slate-550 dark:text-slate-400 block mb-1">واحد زمان</label>
+                        <select
+                          id="supervisor-deadline-unit"
+                          value={deadlines.supervisor.unit}
+                          onChange={(e) => {
+                            onUpdateDeadlines({
+                              ...deadlines,
+                              supervisor: { ...deadlines.supervisor, unit: e.target.value as any }
+                            });
+                          }}
+                          className="w-full text-xs font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-705 rounded-lg px-2 py-2 text-slate-900 dark:text-white animate-none"
+                        >
+                          <option value="m">دقیقه</option>
+                          <option value="h">ساعت</option>
+                          <option value="d">روز</option>
+                        </select>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-500 bg-slate-100/50 dark:bg-slate-800/40 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 leading-relaxed">
+                      فرصت هر سرپرست برای تایید یا رد درخواست‌ها پس از ارجاع: <strong className="text-amber-600 dark:text-amber-400">{deadlines.supervisor.value} {deadlines.supervisor.unit === 'm' ? 'دقیقه' : deadlines.supervisor.unit === 'h' ? 'ساعت' : 'روز'}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                {/* Manager SLA Card */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4 shadow-xs">
+                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-805">
+                    <div className="p-2 bg-rose-50 dark:bg-rose-950/30 rounded-lg text-rose-500">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-extrabold text-slate-805 dark:text-slate-202">مهلت بررسی مدیر</h4>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-400">مرحله دوم ارجاع</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <label className="text-[10px] text-slate-500 dark:text-slate-400 block mb-1">مقدار</label>
+                        <input
+                          type="number"
+                          id="manager-deadline-val"
+                          min="1"
+                          value={deadlines.manager.value}
+                          onChange={(e) => {
+                            const val = Math.max(1, parseInt(e.target.value) || 1);
+                            onUpdateDeadlines({
+                              ...deadlines,
+                              manager: { ...deadlines.manager, value: val }
+                            });
+                          }}
+                          className="w-full text-xs font-bold bg-slate-50 dark:bg-slate-800 border border-slate-230 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white"
+                        />
+                      </div>
+                      <div className="w-28">
+                        <label className="text-[10px] text-slate-550 dark:text-slate-400 block mb-1">واحد زمان</label>
+                        <select
+                          id="manager-deadline-unit"
+                          value={deadlines.manager.unit}
+                          onChange={(e) => {
+                            onUpdateDeadlines({
+                              ...deadlines,
+                              manager: { ...deadlines.manager, unit: e.target.value as any }
+                            });
+                          }}
+                          className="w-full text-xs font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-705 rounded-lg px-2 py-2 text-slate-900 dark:text-white animate-none"
+                        >
+                          <option value="m">دقیقه</option>
+                          <option value="h">ساعت</option>
+                          <option value="d">روز</option>
+                        </select>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-500 bg-slate-100/50 dark:bg-slate-805/40 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 leading-relaxed font-sans">
+                      فرصت هر مدیر دپارتمان برای تایید یا رد پس از تایید سرپرست: <strong className="text-rose-600 dark:text-rose-450">{deadlines.manager.value} {deadlines.manager.unit === 'm' ? 'دقیقه' : deadlines.manager.unit === 'h' ? 'ساعت' : 'روز'}</strong>
+                    </p>
+                  </div>
+                </div>
+
+                {/* President SLA Card */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 space-y-4 shadow-xs">
+                  <div className="flex items-center gap-2 pb-2 border-b border-slate-100 dark:border-slate-805">
+                    <div className="p-2 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg text-indigo-500">
+                      <Clock className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-extrabold text-slate-800 dark:text-slate-200">مهلت بررسی رئیس</h4>
+                      <p className="text-[10px] text-slate-404 dark:text-slate-400">مرحله سوم و تایید نهایی</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1">
+                        <label className="text-[10px] text-slate-500 dark:text-slate-400 block mb-1">مقدار</label>
+                        <input
+                          type="number"
+                          id="president-deadline-val"
+                          min="1"
+                          value={deadlines.president.value}
+                          onChange={(e) => {
+                            const val = Math.max(1, parseInt(e.target.value) || 1);
+                            onUpdateDeadlines({
+                              ...deadlines,
+                              president: { ...deadlines.president, value: val }
+                            });
+                          }}
+                          className="w-full text-xs font-bold bg-slate-50 dark:bg-slate-800 border border-slate-210 dark:border-slate-700 rounded-lg px-3 py-2 text-slate-900 dark:text-white"
+                        />
+                      </div>
+                      <div className="w-28">
+                        <label className="text-[10px] text-slate-550 dark:text-slate-400 block mb-1">واحد زمان</label>
+                        <select
+                          id="president-deadline-unit"
+                          value={deadlines.president.unit}
+                          onChange={(e) => {
+                            onUpdateDeadlines({
+                              ...deadlines,
+                              president: { ...deadlines.president, unit: e.target.value as any }
+                            });
+                          }}
+                          className="w-full text-xs font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-705 rounded-lg px-2 py-2 text-slate-900 dark:text-white animate-none"
+                        >
+                          <option value="m">دقیقه</option>
+                          <option value="h">ساعت</option>
+                          <option value="d">روز</option>
+                        </select>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-slate-500 bg-slate-100/50 dark:bg-slate-805/40 p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 leading-relaxed">
+                      فرصت رئیس کل جهت تصویب نهایی پیش از هشدار تاخیر: <strong className="text-indigo-600 dark:text-indigo-400">{deadlines.president.value} {deadlines.president.unit === 'm' ? 'دقیقه' : deadlines.president.unit === 'h' ? 'ساعت' : 'روز'}</strong>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

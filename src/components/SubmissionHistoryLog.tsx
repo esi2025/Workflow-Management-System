@@ -23,6 +23,7 @@ export default function SubmissionHistoryLog({ submission }: SubmissionHistoryLo
     actionLabel: string;
     timestamp: string;
     comment?: string | null;
+    signature?: string | null;
   }[] = [...actualLogs];
 
   // If there are no actual logs, or we want to make sure approvals are accounted for even if not logged:
@@ -60,6 +61,7 @@ export default function SubmissionHistoryLog({ submission }: SubmissionHistoryLo
         actionLabel: 'امضا و تایید مدیر ارشد دپارتمان',
         timestamp: submission.managerApprovedAt,
         comment: submission.managerComment,
+        signature: submission.managerSignature,
       });
     }
 
@@ -73,6 +75,7 @@ export default function SubmissionHistoryLog({ submission }: SubmissionHistoryLo
         actionLabel: 'توشیح عالی و ثبت قطعی توسط رئیس شرکت',
         timestamp: submission.presidentApprovedAt,
         comment: submission.presidentComment,
+        signature: submission.presidentSignature,
       });
     }
   }
@@ -164,6 +167,21 @@ export default function SubmissionHistoryLog({ submission }: SubmissionHistoryLo
                   <div className="mt-1.5 text-[11px] text-slate-650 dark:text-slate-400 bg-white dark:bg-slate-900/85 p-3.5 border border-slate-150 dark:border-slate-800/80 rounded-lg shadow-2xs italic flex items-start gap-1">
                     <span className="text-amber-500 font-bold pr-0.5 font-sans">💬 پیوست یادداشت:</span>
                     <span>{event.comment}</span>
+                  </div>
+                )}
+
+                {/* Hand-drawn Signature display inside the log timeline */}
+                {event.signature && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-[10px] text-slate-400 font-bold">امضای ترسیم‌شده:</span>
+                    <div className="bg-white border border-slate-205 dark:border-slate-800 rounded-lg p-1 px-2.5 inline-block shadow-2xs">
+                      <img 
+                        src={event.signature} 
+                        alt={`امضای الکترونیکی ${event.userName}`}
+                        className="h-10 object-contain block mix-blend-multiply" 
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
                   </div>
                 )}
               </div>
